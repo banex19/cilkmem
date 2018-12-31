@@ -27,7 +27,6 @@ void SPDAG::Spawn(SPEdgeData & currentEdge)
         SPLevel* parentLevel = GetParentLevel();
         assert(parentLevel != nullptr);
 
-        assert(parentLevel->numStrandsLeft == 1);
         parentLevel->numStrandsLeft = 2;
 
         SPNode* pred = parentLevel->currentNode;
@@ -43,10 +42,13 @@ void SPDAG::Spawn(SPEdgeData & currentEdge)
 
 void SPDAG::Sync(SPEdgeData & currentEdge, bool taskExit)
 {
+    if (nodes.size() == 0)
+        return;
+
     SPLevel* parentLevel = GetParentLevel();
     assert(parentLevel != nullptr);
 
-    std::cout << "DAG sync: level " << currentStack.size() - 1 << ", left " << parentLevel->numStrandsLeft << "\n";
+    std::cout << "DAG sync: level " << currentStack.size() - 1 << ", left " << parentLevel->numStrandsLeft <<"\n";
 
     SPNode* pred = lastNode;
 
@@ -83,6 +85,12 @@ void SPDAG::Sync(SPEdgeData & currentEdge, bool taskExit)
 
     parentLevel->numStrandsLeft--;
 
+    if (parentLevel->numStrandsLeft == 0) // Everybody synced.
+    {
+        parentLevel->currentNode = syncNode;
+        parentLevel->syncNode = nullptr;
+    }
+
     pred->AddSuccessor(AddEdge(), syncNode, currentEdge);
     syncNode->AddPredecessor(AddEdge(), pred, currentEdge);
 
@@ -99,6 +107,6 @@ void SPDAG::Print()
         assert(edge->to);
         if (edge->forward)
             std::cout << "(" << edge->id << ") " << edge->from->id << " --> " << edge->to->id <<
-            " (weight: " << edge->data.memAllocated << ")\n";
+            " (max: " << edge->data.maxMemAllocated << " - total: " << edge->data.memAllocated << ")\n";
     }
 }

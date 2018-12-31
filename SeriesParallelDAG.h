@@ -6,8 +6,25 @@
 
 struct SPNode;
 
+struct SPComponent {
+    int64_t memTotal = 0;
+    int64_t maxSingle = 0;
+    int64_t multiRobust = 0;
+
+    void CombineSeries(const SPComponent& other)
+    {
+
+    }
+
+    void CombineParallel(const SPComponent& other)
+    {
+
+    }
+};
+
 struct SPEdgeData {
-    size_t memAllocated;
+    int64_t memAllocated = 0;
+    int64_t maxMemAllocated = 0;
 
     bool operator==(const SPEdgeData& other) const {
         return memAllocated == other.memAllocated;
@@ -40,6 +57,8 @@ struct SPNode {
         newEdge->data = data;
         newEdge->forward = true;
         successors.push_back(newEdge);
+
+        std::cout << "Adding edge " << this->id << " --> " << succ->id << "\n";
     }
 
     void AddPredecessor(SPEdge* newEdge, SPNode* pred, const SPEdgeData &data) {

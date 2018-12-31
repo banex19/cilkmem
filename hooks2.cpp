@@ -1,9 +1,34 @@
 
 #include "hooks.h"
 #include "SeriesParallelDAG.h"
+#include <cxxabi.h>
+#include <memory>
+#include <unordered_map>
+#include <cassert>
 
 SPDAG dag;
 SPEdgeData currentEdge;
+
+inline std::string demangle(const char* name)
+{
+    int status = -1;
+
+    std::unique_ptr<char, void(*)(void*)> res{ abi::__cxa_demangle(name, NULL, NULL, &status), std::free };
+    if (status != 0)
+        return name;
+
+    std::string demangled = res.get();
+
+    if (demangled.find_first_of(' ') < demangled.find_first_of('('))
+        demangled = demangled.substr(demangled.find_first_of(' '));
+
+    if (demangled.find_first_of('<') < demangled.find_first_of('('))
+        return demangled.substr(0, demangled.find_first_of('<'));
+    else
+        return demangled.substr(0, demangled.find_first_of('('));
+}
+
+std::unordered_map<void*, size_t> allocations;
 
 extern "C" {
     void program_exit() {
@@ -16,17 +41,49 @@ extern "C" {
         dag.Print();
     }
 
-    void __csi_before_call(const csi_id_t call_id, const csi_id_t func_id,
-        const call_prop_t prop)
-    {
-        currentEdge.memAllocated += 10;
+    void* __csi_interpose_malloc(size_t size) {
+        void* mem = malloc(size);
+
+        if (size == 0) // Treat zero-allocations as non-zero for sake of testing.
+            size = 1;
+
+        currentEdge.memAllocated += size;
+
+        if (currentEdge.memAllocated > currentEdge.maxMemAllocated)
+            currentEdge.maxMemAllocated = currentEdge.memAllocated;
+
+        allocations[mem] = size;
+
+        return mem;
     }
 
-    void __csi_after_call(const csi_id_t call_id, const csi_id_t func_id,
+    void  __csi_interpose_free(void* mem) {
+        size_t size = allocations[mem];
+        assert(size > 0);
+
+        currentEdge.memAllocated -= size;
+
+        allocations[mem] = 0;
+        free(mem);
+    }
+
+    void __attribute__((noinline))  __csi_before_call(const csi_id_t call_id, const csi_id_t func_id,
         const call_prop_t prop)
     {
-
+        /*  std::string funcName = demangle(__csi_get_callsite_source_loc(call_id)->name);
+          if (funcName == "malloc")
+              currentEdge.memAllocated += 10;
+          std::cout << "Calling function " << funcName
+              << " (" << __csi_get_callsite_source_loc(call_id)->line_number << ")\n"; */
     }
+
+    void __attribute__((noinline))  __csi_after_call(const csi_id_t call_id, const csi_id_t func_id,
+        const call_prop_t prop)
+    {
+        //  std::cout << "Return from call to " << __csi_get_callsite_source_loc(call_id)->name
+        //      << " (" << __csi_get_callsite_source_loc(call_id)->line_number << ")\n";
+    }
+
     void  __attribute__((noinline))  __csi_detach(const csi_id_t detach_id)
     {
         std::cout << "Spawn\n";
