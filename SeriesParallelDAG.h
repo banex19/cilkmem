@@ -37,6 +37,7 @@ struct SPEdge {
     SPNode* to;
     SPEdgeData data;
     bool forward;
+    bool spawn;
 
     bool operator==(const SPEdge& other) const
     {
@@ -49,33 +50,34 @@ struct SPEdge {
 struct SPNode {
     size_t id;
     std::vector<SPEdge*> successors;
-    std::vector<SPEdge*> predecessors;
+    size_t numStrandsLeft = 2;
 
-    void AddSuccessor(SPEdge* newEdge, SPNode* succ, const SPEdgeData &data) {
-        newEdge->from = this;
-        newEdge->to = succ;
-        newEdge->data = data;
-        newEdge->forward = true;
-        successors.push_back(newEdge);
+    void AddSuccessor(SPEdge* newEdgeForward, SPNode* succ, const SPEdgeData &data, bool spawn = false) {
+        newEdgeForward->from = this;
+        newEdgeForward->to = succ;
+        newEdgeForward->data = data;
+        newEdgeForward->forward = true;
+        newEdgeForward->spawn = spawn;
+        successors.push_back(newEdgeForward);
 
         std::cout << "Adding edge " << this->id << " --> " << succ->id << "\n";
-    }
-
-    void AddPredecessor(SPEdge* newEdge, SPNode* pred, const SPEdgeData &data) {
-        newEdge->from = pred;
-        newEdge->to = this;
-        newEdge->data = data;
-        newEdge->forward = false;
-        predecessors.push_back(newEdge);
     }
 };
 
 struct SPLevel {
-    SPNode* currentNode = nullptr;
-    size_t numStrandsLeft = 0;
-    SPNode* syncNode = nullptr;
+    SPNode* currentNode;
+    std::vector<SPNode*> syncNodes;
+    std::vector<size_t> functionLevels;
 
-    SPLevel(SPNode* currentNode) : currentNode(currentNode), numStrandsLeft(2), syncNode(nullptr) {}
+    SPLevel(size_t level, SPNode* currentNode) : currentNode(currentNode)
+    {
+        functionLevels.push_back(level);
+    }
+
+    void PopFunctionLevel() {
+        syncNodes.pop_back();
+        functionLevels.pop_back();
+    }
 };
 
 class SPDAG {
@@ -95,7 +97,11 @@ public:
     void Spawn(SPEdgeData &currentEdge);
     void Sync(SPEdgeData &currentEdge, bool taskExit);
 
+    void IncrementLevel() { currentLevel++; }
+    void DecrementLevel() { currentLevel--; }
+
     void Print();
+    void WriteDotFile(const std::string& filename);
 
 private:
 
@@ -111,4 +117,5 @@ private:
     SPNode* lastNode;
 
     bool afterSpawn = false;
+    size_t currentLevel = 0;
 };

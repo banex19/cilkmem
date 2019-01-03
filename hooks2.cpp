@@ -1,10 +1,6 @@
 
 #include "hooks.h"
-#include "SeriesParallelDAG.h"
-#include <cxxabi.h>
-#include <memory>
-#include <unordered_map>
-#include <cassert>
+
 
 SPDAG dag;
 SPEdgeData currentEdge;
@@ -34,11 +30,15 @@ extern "C" {
     void program_exit() {
         std::cout << "Exiting program\n";
 
+        dag.WriteDotFile("sp.dot");
+
         // Simulate a final sync.
         dag.Sync(currentEdge, false);
 
         // Print out the Series Parallel DAG.
         dag.Print();
+
+        dag.WriteDotFile("sp.dot");
     }
 
     void* __csi_interpose_malloc(size_t size) {
@@ -84,11 +84,12 @@ extern "C" {
         //      << " (" << __csi_get_callsite_source_loc(call_id)->line_number << ")\n";
     }
 
-    void  __attribute__((noinline))  __csi_detach(const csi_id_t detach_id)
+    void  __attribute__((noinline))  __csi_detach(const csi_id_t detach_id, const int32_t has_spawned)
     {
         std::cout << "Spawn\n";
         dag.Spawn(currentEdge);
         currentEdge = SPEdgeData();
+        std::cout << "-----------------------\n";
     }
 
     void __csi_task(const csi_id_t task_id, const csi_id_t detach_id,
@@ -103,6 +104,7 @@ extern "C" {
         std::cout << "Task exit\n";
         dag.Sync(currentEdge, true);
         currentEdge = SPEdgeData();
+        std::cout << "-----------------------\n";
     }
 
     void __csi_detach_continue(const csi_id_t detach_continue_id,
@@ -110,10 +112,16 @@ extern "C" {
     {
     }
 
-    void  __attribute__((noinline))  __csi_sync(const csi_id_t sync_id)
+    void  __attribute__((noinline))  __csi_sync(const csi_id_t sync_id, const int32_t has_spawned)
     {
-        std::cout << "Sync\n";
+        std::cout << "Sync id " << sync_id << " (spawned: " << has_spawned << ")\n";
+
+        if (has_spawned <= 0)
+            return;
+
         dag.Sync(currentEdge, false);
         currentEdge = SPEdgeData();
+        std::cout << "-----------------------\n";
+
     }
 }

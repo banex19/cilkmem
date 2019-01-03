@@ -9,3 +9,6 @@
 *.o
 *.txt
 .vs
+*.dot
+*.pdf
+*.tmp
