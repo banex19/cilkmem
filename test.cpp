@@ -12,7 +12,7 @@ int test(int x)
     return printf("Value: %d\n", x);
 }
 
-void* testAlloc(size_t size)
+void* __attribute__((noinline)) testAlloc(size_t size)
 {
     return malloc(size);
 }
@@ -37,6 +37,7 @@ int testSpawn(int x)
     cilk_spawn testFree(y);
 
     return k;
+
 }
 
 
@@ -69,7 +70,7 @@ __attribute__((noinline)) uint64_t rec(uint64_t n) {
     if (n == 2)
         x = 0;
     else
-        x =  rec(0);
+        x = rec(0);
     // test((int)n);
     mem = malloc(n);
     y = cilk_spawn rec(n - 1);
@@ -85,25 +86,39 @@ __attribute__((noinline)) uint64_t rec(uint64_t n) {
 int main()
 {
 
-  //  uint64_t x = fib(3);
+    //  uint64_t x = fib(3);
 
 
 
-    //if (x == 1)
-    //    cilk_spawn test(100);
-   //  uint64_t x = cilk_spawn test(10);
-    
-     mem = malloc(100);
-     uint64_t y = cilk_spawn  testSpawn(100);
+      //if (x == 1)
+      //    cilk_spawn test(100);
+     //  uint64_t x = cilk_spawn test(10);
 
-     std::cout << "Continuation\n";
+    mem = malloc(100);
+   // uint64_t x = cilk_spawn fib(2);
+  //  uint64_t y =  testSpawn(100);
 
-     cilk_sync;
+   /* for(size_t i = 0; i < 2; ++i)
+    {
+        mem = cilk_spawn testAlloc(10);
+    } */
 
-     mem = malloc(500);
+    cilk_for(size_t i = 0; i < 6; ++i)
+    {
+        uint64_t x = fib(5);
+    }
 
 
-   //  printf("Returned %lu and %lu\n", x, y);
+    mem = malloc(123);
+
+  //  cilk_sync;
+
+  //  uint64_t x = cilk_spawn fib(3);
+
+    mem = malloc(500);
+
+
+  //  printf("Returned %lu and %lu\n", x, y);
 
 
     return 0;

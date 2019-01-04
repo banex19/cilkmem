@@ -68,15 +68,25 @@ struct SPLevel {
     SPNode* currentNode;
     std::vector<SPNode*> syncNodes;
     std::vector<size_t> functionLevels;
+    std::vector<size_t> regionIds;
 
-    SPLevel(size_t level, SPNode* currentNode) : currentNode(currentNode)
+    SPLevel(size_t level, size_t regionId, SPNode* currentNode) : currentNode(currentNode)
     {
         functionLevels.push_back(level);
+        regionIds.push_back(regionId);
+    }
+
+    void PushFunctionLevel(SPNode* syncNode, size_t functionLevel, size_t regionId)
+    {
+        syncNodes.push_back(syncNode);
+        functionLevels.push_back(functionLevel);
+        regionIds.push_back(regionId);
     }
 
     void PopFunctionLevel() {
         syncNodes.pop_back();
         functionLevels.pop_back();
+        regionIds.pop_back();
     }
 };
 
@@ -94,8 +104,8 @@ public:
         edges.clear();
     }
 
-    void Spawn(SPEdgeData &currentEdge);
-    void Sync(SPEdgeData &currentEdge, bool taskExit);
+    void Spawn(SPEdgeData &currentEdge, size_t regionId);
+    void Sync(SPEdgeData &currentEdge, size_t regionId);
 
     void IncrementLevel() { currentLevel++; }
     void DecrementLevel() { currentLevel--; }

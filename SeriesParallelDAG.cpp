@@ -3,25 +3,28 @@
 #include <fstream>
 
 // We have spawned a new task. Create the spawn node.
-void SPDAG::Spawn(SPEdgeData & currentEdge)
+void SPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId)
 {
     SPNode* spawnNode = AddNode();
 
     std::cout << "Adding spawn node (id: " << spawnNode->id << ")\n";
 
-
-
     if (currentStack.size() == 0 || afterSpawn)
     {
         SPLevel* parentLevel = GetParentLevel();
 
-        SPLevel* newLevel = new SPLevel(currentLevel, spawnNode);
+        SPLevel* newLevel = new SPLevel(currentLevel, regionId, spawnNode);
         currentStack.push_back(newLevel);
 
         if (parentLevel != nullptr)
         {
             SPNode* parent = parentLevel->currentNode;
             parent->AddSuccessor(AddEdge(), spawnNode, currentEdge, true);
+        }
+        else { // Beginning of program.
+            SPNode* startNode = AddNode();
+            std::cout << "Adding start node (id: " << startNode->id << ")\n";
+            startNode->AddSuccessor(AddEdge(), spawnNode, currentEdge);
         }
 
         SPNode* syncNode = AddNode();
@@ -40,17 +43,18 @@ void SPDAG::Spawn(SPEdgeData & currentEdge)
         // function stack. If we're not, we will need an 
         // additional sync node.
         if (parentLevel->functionLevels.size() == 0 ||
-            parentLevel->functionLevels.back() < currentLevel)
+            parentLevel->functionLevels.back() < currentLevel ||
+            parentLevel->regionIds.back() != regionId)
         {
             SPNode* syncNode = AddNode();
-            parentLevel->syncNodes.push_back(syncNode);
-            parentLevel->functionLevels.push_back(currentLevel);
+            parentLevel->PushFunctionLevel(syncNode, currentLevel, regionId);
 
             std::cout << "Adding sync node (id: " << syncNode->id << ")\n";
         }
         else {
             assert(parentLevel->functionLevels.size() > 0 &&
                 parentLevel->functionLevels.back() == currentLevel);
+            assert(regionId == parentLevel->regionIds.back());
             parentLevel->syncNodes.back()->numStrandsLeft = 2;
         }
 
@@ -63,13 +67,17 @@ void SPDAG::Spawn(SPEdgeData & currentEdge)
     afterSpawn = true;
 }
 
-void SPDAG::Sync(SPEdgeData & currentEdge, bool taskExit)
+void SPDAG::Sync(SPEdgeData & currentEdge, size_t regionId)
 {
     if (nodes.size() == 0)
         return;
 
     SPLevel* parentLevel = GetParentLevel();
     assert(parentLevel != nullptr);
+    
+    // regionId is provided only by sync events, not by task exit events.
+    if (regionId != 0)
+        assert(regionId == parentLevel->regionIds.back());
 
     std::cout << "DAG sync: level " << currentStack.size() - 1 << "\n";
     if (parentLevel->syncNodes.size() > 0)
@@ -77,7 +85,7 @@ void SPDAG::Sync(SPEdgeData & currentEdge, bool taskExit)
         std::cout << "Left to sync for node " << parentLevel->syncNodes.back()->id << ": " <<
             parentLevel->syncNodes.back()->numStrandsLeft << "\n";
     }
-    
+
 
     SPNode* pred = lastNode;
 

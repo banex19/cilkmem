@@ -25,6 +25,7 @@ inline std::string demangle(const char* name)
 }
 
 std::unordered_map<void*, size_t> allocations;
+extern size_t currentLevel;
 
 extern "C" {
     void program_exit() {
@@ -84,10 +85,11 @@ extern "C" {
         //      << " (" << __csi_get_callsite_source_loc(call_id)->line_number << ")\n";
     }
 
-    void  __attribute__((noinline))  __csi_detach(const csi_id_t detach_id, const int32_t has_spawned)
+    void  __attribute__((noinline))  __csi_detach(const csi_id_t detach_id, const int32_t* has_spawned)
     {
-        std::cout << "Spawn\n";
-        dag.Spawn(currentEdge);
+        std::cout << "Spawn id " << detach_id  << " (spawned: " << *has_spawned << ") - Addr: " << has_spawned 
+            << " - Level: " << currentLevel << "\n ";
+        dag.Spawn(currentEdge, (uintptr_t)has_spawned);
         currentEdge = SPEdgeData();
         std::cout << "-----------------------\n";
     }
@@ -102,7 +104,7 @@ extern "C" {
         const csi_id_t detach_id)
     {
         std::cout << "Task exit\n";
-        dag.Sync(currentEdge, true);
+        dag.Sync(currentEdge, 0);
         currentEdge = SPEdgeData();
         std::cout << "-----------------------\n";
     }
@@ -112,14 +114,15 @@ extern "C" {
     {
     }
 
-    void  __attribute__((noinline))  __csi_sync(const csi_id_t sync_id, const int32_t has_spawned)
+    void  __attribute__((noinline))  __csi_sync(const csi_id_t sync_id, const int32_t* has_spawned)
     {
-        std::cout << "Sync id " << sync_id << " (spawned: " << has_spawned << ")\n";
+        std::cout << "Sync id " << sync_id << " (spawned: " << *has_spawned << ") - Addr: " << has_spawned
+            << " - Level: " << currentLevel <<"\n ";
 
-        if (has_spawned <= 0)
+        if (*has_spawned <= 0)
             return;
 
-        dag.Sync(currentEdge, false);
+        dag.Sync(currentEdge, (uintptr_t)has_spawned);
         currentEdge = SPEdgeData();
         std::cout << "-----------------------\n";
 
