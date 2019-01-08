@@ -103,9 +103,9 @@ int main()
         mem = cilk_spawn testAlloc(10);
     } */
 
-    cilk_for(size_t i = 0; i < 6; ++i)
+    cilk_for(size_t i = 0; i < 1; ++i)
     {
-        uint64_t x = fib(5);
+        uint64_t x = testSpawn(3);
     }
 
 

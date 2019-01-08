@@ -29,6 +29,7 @@ void SPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId)
 
         SPNode* syncNode = AddNode();
         newLevel->syncNodes.push_back(syncNode);
+        spawnNode->associatedSyncNode = syncNode;
 
         std::cout << "Adding sync node (id: " << syncNode->id << ")\n";
     }
@@ -49,6 +50,8 @@ void SPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId)
             SPNode* syncNode = AddNode();
             parentLevel->PushFunctionLevel(syncNode, currentLevel, regionId);
 
+            spawnNode->associatedSyncNode = syncNode;
+
             std::cout << "Adding sync node (id: " << syncNode->id << ")\n";
         }
         else {
@@ -56,6 +59,7 @@ void SPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId)
                 parentLevel->functionLevels.back() == currentLevel);
             assert(regionId == parentLevel->regionIds.back());
             parentLevel->syncNodes.back()->numStrandsLeft = 2;
+            spawnNode->associatedSyncNode = parentLevel->syncNodes.back();
         }
 
         SPNode* pred = parentLevel->currentNode;
@@ -74,7 +78,7 @@ void SPDAG::Sync(SPEdgeData & currentEdge, size_t regionId)
 
     SPLevel* parentLevel = GetParentLevel();
     assert(parentLevel != nullptr);
-    
+
     // regionId is provided only by sync events, not by task exit events.
     if (regionId != 0)
         assert(regionId == parentLevel->regionIds.back());
@@ -135,6 +139,62 @@ void SPDAG::Sync(SPEdgeData & currentEdge, size_t regionId)
     afterSpawn = false;
 }
 
+SPComponent SPDAG::AggregateComponents(int64_t threshold)
+{
+    if (nodes.size() == 0)
+        return SPComponent();
+
+    assert(edges.size() >= 2);
+
+    SPComponent start{ edges.front()->data };
+    SPComponent end{ edges.back()->data };
+
+    start.CombineSeries(AggregateComponentsFromNode(nodes[0], threshold));
+    start.CombineSeries(end);
+
+    return start;
+}
+
+
+SPComponent SPDAG::AggregateComponentsFromNode(SPNode * pivot, int64_t threshold)
+{
+    SPNode* sync = pivot->associatedSyncNode;
+    assert(sync != nullptr);
+    assert(pivot->successors.size() == 2);
+
+    SPComponent left = AggregateUntilSync(pivot->successors[0], sync, threshold);
+    SPComponent right = AggregateUntilSync(pivot->successors[0], sync, threshold);
+
+    left.CombineParallel(right, threshold);
+
+    return left;
+
+}
+
+SPComponent SPDAG::AggregateUntilSync(SPEdge * start, SPNode * syncNode, int64_t threshold)
+{
+    SPComponent subComponent{ start->data };
+
+    SPEdge* currentEdge = start;
+
+    while (currentEdge->to != syncNode)
+    {
+        subComponent.CombineSeries(AggregateComponentsFromNode(currentEdge->to, threshold));
+
+        SPNode* nextSync = currentEdge->to->associatedSyncNode;
+        if (nextSync != nullptr)
+        {
+            assert(nextSync->successors.size() == 1);
+            currentEdge = nextSync->successors[0];
+            subComponent.CombineSeries(SPComponent(currentEdge->data));
+        }
+    }
+
+
+    return subComponent;
+}
+
+
 void SPDAG::Print()
 {
     std::cout << "Series Parallel DAG - Node count: " << nodes.size() << " - Edge count: " << edges.size() << "\n";
@@ -148,7 +208,7 @@ void SPDAG::Print()
                 " (max: " << edge->data.maxMemAllocated << " - total: " << edge->data.memAllocated << ")";
 
             if (edge->spawn)
-                std::cout << " [spawn]";
+                std::cout << " [spawn] [sync node: " << edge->from->associatedSyncNode->id << "]";
 
             std::cout << "\n";
         }

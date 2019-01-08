@@ -6,22 +6,6 @@
 
 struct SPNode;
 
-struct SPComponent {
-    int64_t memTotal = 0;
-    int64_t maxSingle = 0;
-    int64_t multiRobust = 0;
-
-    void CombineSeries(const SPComponent& other)
-    {
-
-    }
-
-    void CombineParallel(const SPComponent& other)
-    {
-
-    }
-};
-
 struct SPEdgeData {
     int64_t memAllocated = 0;
     int64_t maxMemAllocated = 0;
@@ -29,6 +13,28 @@ struct SPEdgeData {
     bool operator==(const SPEdgeData& other) const {
         return memAllocated == other.memAllocated;
     }
+};
+
+struct SPComponent {
+    int64_t memTotal = 0;
+    int64_t maxSingle = 0;
+    int64_t multiRobust = 0;
+
+    SPComponent() {}
+
+    SPComponent(const SPEdgeData& edge) {
+        memTotal = edge.memAllocated;
+        maxSingle = edge.maxMemAllocated;
+        multiRobust = 0;
+    }
+
+    void CombineSeries(const SPComponent& other);
+
+    void CombineParallel(const SPComponent& other, int64_t threshold);
+
+    int64_t GetWatermark(int64_t threshold);
+
+    void Print();
 };
 
 struct SPEdge {
@@ -51,6 +57,7 @@ struct SPNode {
     size_t id;
     std::vector<SPEdge*> successors;
     size_t numStrandsLeft = 2;
+    SPNode* associatedSyncNode;
 
     void AddSuccessor(SPEdge* newEdgeForward, SPNode* succ, const SPEdgeData &data, bool spawn = false) {
         newEdgeForward->from = this;
@@ -107,6 +114,8 @@ public:
     void Spawn(SPEdgeData &currentEdge, size_t regionId);
     void Sync(SPEdgeData &currentEdge, size_t regionId);
 
+    SPComponent AggregateComponents(int64_t threshold);
+
     void IncrementLevel() { currentLevel++; }
     void DecrementLevel() { currentLevel--; }
 
@@ -114,6 +123,9 @@ public:
     void WriteDotFile(const std::string& filename);
 
 private:
+
+    SPComponent AggregateComponentsFromNode(SPNode* pivot, int64_t threshold);
+    SPComponent AggregateUntilSync(SPEdge* start, SPNode* syncNode, int64_t threshold);
 
     SPNode* AddNode() { SPNode* newNode = new SPNode(); newNode->id = nodes.size(); nodes.push_back(newNode); return newNode; }
     SPEdge* AddEdge() { SPEdge* newEdge = new SPEdge(); newEdge->id = edges.size(); edges.push_back(newEdge); return newEdge; }

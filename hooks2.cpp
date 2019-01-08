@@ -40,6 +40,26 @@ extern "C" {
         dag.Print();
 
         dag.WriteDotFile("sp.dot");
+
+        int64_t memLimit = 10000;
+        int64_t p = 2;
+        int64_t threshold = memLimit / (2 * p);
+
+        SPComponent aggregated = dag.AggregateComponents(threshold);
+
+        aggregated.Print();
+
+        int64_t watermark = aggregated.GetWatermark(threshold);
+
+        std::cout << "Watermark: " << watermark << "\n";
+        if (watermark <= (memLimit / 2))
+        {
+            std::cout << "Program will use LESS than " << memLimit << " bytes\n";
+        }
+        else {
+            std::cout << "Program will use AT LEAST " << (memLimit / 2) << " bytes\n";
+        }
+
     }
 
     void* __csi_interpose_malloc(size_t size) {
@@ -87,7 +107,7 @@ extern "C" {
 
     void  __attribute__((noinline))  __csi_detach(const csi_id_t detach_id, const int32_t* has_spawned)
     {
-        std::cout << "Spawn id " << detach_id  << " (spawned: " << *has_spawned << ") - Addr: " << has_spawned 
+        std::cout << "Spawn id " << detach_id << " (spawned: " << *has_spawned << ") - Addr: " << has_spawned
             << " - Level: " << currentLevel << "\n ";
         dag.Spawn(currentEdge, (uintptr_t)has_spawned);
         currentEdge = SPEdgeData();
@@ -117,7 +137,7 @@ extern "C" {
     void  __attribute__((noinline))  __csi_sync(const csi_id_t sync_id, const int32_t* has_spawned)
     {
         std::cout << "Sync id " << sync_id << " (spawned: " << *has_spawned << ") - Addr: " << has_spawned
-            << " - Level: " << currentLevel <<"\n ";
+            << " - Level: " << currentLevel << "\n ";
 
         if (*has_spawned <= 0)
             return;
