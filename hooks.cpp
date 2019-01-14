@@ -19,7 +19,6 @@ extern "C" {
 
     __attribute__((noinline))   void __csi_func_entry(const csi_id_t func_id, const func_prop_t prop)
     {
-        std::cout << "Function: " << __csi_get_func_source_loc(func_id)->name << "\n";
         currentLevel++;
         dag.IncrementLevel();
     }

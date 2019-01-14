@@ -7,7 +7,8 @@ void SPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId)
 {
     SPNode* spawnNode = AddNode();
 
-    std::cout << "Adding spawn node (id: " << spawnNode->id << ")\n";
+    if (debugVerbose)
+        std::cout << "Adding spawn node (id: " << spawnNode->id << ")\n";
 
     if (currentStack.size() == 0 || afterSpawn)
     {
@@ -23,7 +24,10 @@ void SPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId)
         }
         else { // Beginning of program.
             SPNode* startNode = AddNode();
-            std::cout << "Adding start node (id: " << startNode->id << ")\n";
+
+            if (debugVerbose)
+                std::cout << "Adding start node (id: " << startNode->id << ")\n";
+
             startNode->AddSuccessor(AddEdge(), spawnNode, currentEdge);
         }
 
@@ -31,7 +35,8 @@ void SPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId)
         newLevel->syncNodes.push_back(syncNode);
         spawnNode->associatedSyncNode = syncNode;
 
-        std::cout << "Adding sync node (id: " << syncNode->id << ")\n";
+        if (debugVerbose)
+            std::cout << "Adding sync node (id: " << syncNode->id << ")\n";
     }
     else if (!afterSpawn)
     {
@@ -52,7 +57,8 @@ void SPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId)
 
             spawnNode->associatedSyncNode = syncNode;
 
-            std::cout << "Adding sync node (id: " << syncNode->id << ")\n";
+            if (debugVerbose)
+                std::cout << "Adding sync node (id: " << syncNode->id << ")\n";
         }
         else {
             assert(parentLevel->functionLevels.size() > 0 &&
@@ -83,10 +89,13 @@ void SPDAG::Sync(SPEdgeData & currentEdge, size_t regionId)
     if (regionId != 0)
         assert(regionId == parentLevel->regionIds.back());
 
-    std::cout << "DAG sync: level " << currentStack.size() - 1 << "\n";
+    if (debugVerbose)
+        std::cout << "DAG sync: level " << currentStack.size() - 1 << "\n";
+
     if (parentLevel->syncNodes.size() > 0)
     {
-        std::cout << "Left to sync for node " << parentLevel->syncNodes.back()->id << ": " <<
+        if (debugVerbose)
+            std::cout << "Left to sync for node " << parentLevel->syncNodes.back()->id << ": " <<
             parentLevel->syncNodes.back()->numStrandsLeft << "\n";
     }
 
@@ -98,11 +107,14 @@ void SPDAG::Sync(SPEdgeData & currentEdge, size_t regionId)
         delete parentLevel;
         currentStack.pop_back();
 
-        std::cout << "Finished level " << currentStack.size() << "\n";
+        if (debugVerbose)
+            std::cout << "Finished level " << currentStack.size() << "\n";
 
         if (currentStack.size() == 0) // The program is exiting.
         {
-            std::cout << "Adding exit node\n";
+            if (debugVerbose)
+                std::cout << "Adding exit node\n";
+
             SPNode* exitNode = AddNode();
             pred->AddSuccessor(AddEdge(), exitNode, currentEdge);
             return;
@@ -113,7 +125,8 @@ void SPDAG::Sync(SPEdgeData & currentEdge, size_t regionId)
         assert(parentLevel->syncNodes.size() > 0);
         assert(parentLevel->syncNodes.back()->numStrandsLeft == 2);
 
-        std::cout << "DAG sync (continued): level " << currentStack.size() - 1 << "\n";
+        if (debugVerbose)
+            std::cout << "DAG sync (continued): level " << currentStack.size() - 1 << "\n";
     }
 
     assert(parentLevel->syncNodes.size() > 0);

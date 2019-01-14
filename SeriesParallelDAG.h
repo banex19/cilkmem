@@ -5,6 +5,9 @@
 #include <cstdint>
 #include <cassert>
 
+
+constexpr bool debugVerbose = false;
+
 struct SPNode;
 
 template <typename T>
@@ -101,6 +104,7 @@ struct SPNode {
         newEdgeForward->spawn = spawn;
         successors.push_back(newEdgeForward);
 
+        if (debugVerbose)
         std::cout << "Adding edge " << this->id << " --> " << succ->id << "\n";
     }
 };

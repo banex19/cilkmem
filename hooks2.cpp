@@ -107,11 +107,15 @@ extern "C" {
 
     void  __attribute__((noinline))  __csi_detach(const csi_id_t detach_id, const int32_t* has_spawned)
     {
-        std::cout << "Spawn id " << detach_id << " (spawned: " << *has_spawned << ") - Addr: " << has_spawned
+        if (debugVerbose)
+            std::cout << "Spawn id " << detach_id << " (spawned: " << *has_spawned << ") - Addr: " << has_spawned
             << " - Level: " << currentLevel << "\n ";
+
         dag.Spawn(currentEdge, (uintptr_t)has_spawned);
         currentEdge = SPEdgeData();
-        std::cout << "-----------------------\n";
+
+        if (debugVerbose)
+            std::cout << "-----------------------\n";
     }
 
     void __csi_task(const csi_id_t task_id, const csi_id_t detach_id,
@@ -123,10 +127,14 @@ extern "C" {
     void __csi_task_exit(const csi_id_t task_exit_id, const csi_id_t task_id,
         const csi_id_t detach_id)
     {
-        std::cout << "Task exit\n";
+        if (debugVerbose)
+            std::cout << "Task exit\n";
+
         dag.Sync(currentEdge, 0);
         currentEdge = SPEdgeData();
-        std::cout << "-----------------------\n";
+
+        if (debugVerbose)
+            std::cout << "-----------------------\n";
     }
 
     void __csi_detach_continue(const csi_id_t detach_continue_id,
@@ -136,7 +144,8 @@ extern "C" {
 
     void  __attribute__((noinline))  __csi_sync(const csi_id_t sync_id, const int32_t* has_spawned)
     {
-        std::cout << "Sync id " << sync_id << " (spawned: " << *has_spawned << ") - Addr: " << has_spawned
+        if (debugVerbose)
+            std::cout << "Sync id " << sync_id << " (spawned: " << *has_spawned << ") - Addr: " << has_spawned
             << " - Level: " << currentLevel << "\n ";
 
         if (*has_spawned <= 0)
@@ -144,7 +153,9 @@ extern "C" {
 
         dag.Sync(currentEdge, (uintptr_t)has_spawned);
         currentEdge = SPEdgeData();
-        std::cout << "-----------------------\n";
+
+        if (debugVerbose)
+            std::cout << "-----------------------\n";
 
     }
 }
