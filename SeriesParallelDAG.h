@@ -3,8 +3,42 @@
 #include <iostream>
 #include <unordered_map>
 #include <cstdint>
+#include <cassert>
 
 struct SPNode;
+
+template <typename T>
+class Nullable {
+public:
+    Nullable(T val) : value(val) {}
+    Nullable() : Nullable(NULL_VALUE) {}
+
+    Nullable<T> operator+(const Nullable<T>& other) const {
+        if (!HasValue() || !other.HasValue())
+            return NULL_VALUE;
+        else return Nullable<T>(value + other.value);
+    }
+
+    template <typename U>
+    friend std::ostream& operator<< (std::ostream & os,  const Nullable<U>  & obj);
+
+    Nullable<T> Max(const Nullable<T>& other) const {
+        if (!HasValue())
+            return other;
+        else if (!other.HasValue())
+            return *this;
+        else return Nullable<T>(std::max(value, other.value));
+    }
+
+    bool HasValue() const { return value != NULL_VALUE; }
+    T GetValue() const { return value; }
+
+    static T NULL_VALUE;
+
+private:
+    T value;
+};
+
 
 struct SPEdgeData {
     int64_t memAllocated = 0;
@@ -18,7 +52,7 @@ struct SPEdgeData {
 struct SPComponent {
     int64_t memTotal = 0;
     int64_t maxSingle = 0;
-    int64_t multiRobust = 0;
+    Nullable<int64_t> multiRobust = 0;
 
     SPComponent() {}
 

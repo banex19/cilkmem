@@ -1,59 +1,72 @@
 #include "SeriesParallelDAG.h"
 #include <algorithm>
 
-// Null is 0
-static constexpr int64_t NULL_VALUE = 0;
-
-int64_t NullAdd(int64_t a, int64_t b)
+template <typename T>
+Nullable<T> operator+(T a, const Nullable<T>& b)
 {
-    if (a == NULL_VALUE || b == NULL_VALUE)
-        return NULL_VALUE;
-    else return a + b;
+    return Nullable<T>(a).operator+(b);
 }
 
-int64_t NullMax(int64_t a, int64_t b)
+template <typename T>
+std::ostream & operator<<(std::ostream & os,  const Nullable<T>  & obj)
 {
-    if (a == NULL_VALUE)
-        return b;
-    if (b == NULL_VALUE)
-        return a;
-    else return std::max(a, b);
+    if (obj.HasValue())
+        os << obj.GetValue();
+    else
+        os << "null";
+    return os;
 }
 
-int64_t NullMax(int64_t a, int64_t b, int64_t c)
+template <typename T>
+T Nullable<T>::NULL_VALUE = std::numeric_limits<T>::max();
+
+Nullable<int64_t> test;
+
+template <typename T>
+Nullable<T> NullMax(const Nullable<T>& a, const Nullable<T> &b)
 {
-    return NullMax(a, NullMax(b, c));
+    return a.Max(b);
 }
 
-int64_t NullMax(int64_t a, int64_t b, int64_t c, int64_t d)
+template <typename T>
+Nullable<T> NullMax(const Nullable<T>& a, const  Nullable<T>& b, const Nullable<T>& c)
 {
-    return NullMax(a, NullMax(b, c, d));
+    return NullMax(a, b).Max(c);
+}
+
+template <typename T>
+Nullable<T> NullMax(const Nullable<T>& a, const Nullable<T> &b, const Nullable<T>& c, const Nullable<T> &d)
+{
+    return NullMax(a, b, c).Max(d);
 }
 
 void SPComponent::CombineSeries(const SPComponent & other)
 {
     memTotal = memTotal + other.memTotal;
     maxSingle = std::max(maxSingle, memTotal + other.maxSingle);
-    multiRobust = NullMax(multiRobust, NullAdd(memTotal, other.multiRobust));
+    multiRobust = NullMax(multiRobust, memTotal + other.multiRobust);
 }
 
 void SPComponent::CombineParallel(const SPComponent & other, int64_t threshold)
 {
     memTotal = memTotal + other.memTotal;
-    maxSingle = std::max(maxSingle + std::max(0L, other.memTotal), other.maxSingle + std::max(0L, memTotal));
+    maxSingle = std::max(maxSingle + std::max((int64_t)0, other.memTotal), other.maxSingle + std::max((int64_t)0, memTotal));
 
-    int64_t c1MaxSingleBar = maxSingle > threshold ? maxSingle : NULL_VALUE;
-    int64_t c2MaxSingleBar = other.maxSingle > threshold ? other.maxSingle : NULL_VALUE;
+    Nullable<int64_t> c1MaxSingleBar = maxSingle > threshold ? maxSingle : Nullable<int64_t>::NULL_VALUE;
+    Nullable<int64_t> c2MaxSingleBar = other.maxSingle > threshold ? other.maxSingle : Nullable<int64_t>::NULL_VALUE;
 
     multiRobust = NullMax(
-        NullAdd(c1MaxSingleBar, c2MaxSingleBar),
-        NullAdd(NullMax(c1MaxSingleBar, multiRobust, memTotal, 0L), other.multiRobust),
-        NullAdd(NullMax(c2MaxSingleBar, other.multiRobust, other.memTotal, 0L), multiRobust));
+        c1MaxSingleBar + c2MaxSingleBar,
+        NullMax(c1MaxSingleBar, multiRobust, Nullable<int64_t>(memTotal), Nullable<int64_t>(0)) + other.multiRobust,
+        NullMax(c2MaxSingleBar, other.multiRobust, Nullable<int64_t>(other.memTotal), Nullable<int64_t>(0)) + multiRobust);
 }
 
 int64_t SPComponent::GetWatermark(int64_t threshold)
 {
-    return NullMax(maxSingle > threshold ? maxSingle : NULL_VALUE, multiRobust, 0L);
+    auto nullableWatermark = NullMax(maxSingle > threshold ? Nullable<int64_t>(maxSingle) : Nullable<int64_t>::NULL_VALUE, multiRobust, Nullable<int64_t>(0));
+    assert(nullableWatermark.HasValue());
+
+    return nullableWatermark.GetValue();
 }
 
 void SPComponent::Print()
