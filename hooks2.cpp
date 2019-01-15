@@ -91,18 +91,11 @@ extern "C" {
     void __attribute__((noinline))  __csi_before_call(const csi_id_t call_id, const csi_id_t func_id,
         const call_prop_t prop)
     {
-        /*  std::string funcName = demangle(__csi_get_callsite_source_loc(call_id)->name);
-          if (funcName == "malloc")
-              currentEdge.memAllocated += 10;
-          std::cout << "Calling function " << funcName
-              << " (" << __csi_get_callsite_source_loc(call_id)->line_number << ")\n"; */
     }
 
     void __attribute__((noinline))  __csi_after_call(const csi_id_t call_id, const csi_id_t func_id,
         const call_prop_t prop)
     {
-        //  std::cout << "Return from call to " << __csi_get_callsite_source_loc(call_id)->name
-        //      << " (" << __csi_get_callsite_source_loc(call_id)->line_number << ")\n";
     }
 
     void  __attribute__((noinline))  __csi_detach(const csi_id_t detach_id, const int32_t* has_spawned)
@@ -121,7 +114,6 @@ extern "C" {
     void __csi_task(const csi_id_t task_id, const csi_id_t detach_id,
         void *sp)
     {
-
     }
 
     void __csi_task_exit(const csi_id_t task_exit_id, const csi_id_t task_id,
@@ -156,6 +148,5 @@ extern "C" {
 
         if (debugVerbose)
             std::cout << "-----------------------\n";
-
     }
 }

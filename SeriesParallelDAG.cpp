@@ -176,7 +176,7 @@ SPComponent SPDAG::AggregateComponentsFromNode(SPNode * pivot, int64_t threshold
     assert(pivot->successors.size() == 2);
 
     SPComponent left = AggregateUntilSync(pivot->successors[0], sync, threshold);
-    SPComponent right = AggregateUntilSync(pivot->successors[0], sync, threshold);
+    SPComponent right = AggregateUntilSync(pivot->successors[1], sync, threshold);
 
     left.CombineParallel(right, threshold);
 

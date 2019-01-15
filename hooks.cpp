@@ -14,7 +14,6 @@ extern "C" {
 
     void __csi_unit_init(const char * const file_name,
         const instrumentation_counts_t counts) {
-        ;
     }
 
     __attribute__((noinline))   void __csi_func_entry(const csi_id_t func_id, const func_prop_t prop)

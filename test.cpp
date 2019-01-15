@@ -22,7 +22,7 @@ void testFree(void* mem)
     return free(mem);
 }
 
-int testSpawn(int x)
+__attribute__((noinline)) int testSpawn(int x)
 {
     void* y = cilk_spawn testAlloc((size_t)x);
 
@@ -105,7 +105,7 @@ int main()
 
     cilk_for(size_t i = 0; i < 1; ++i)
     {
-        uint64_t x = testSpawn(3);
+        uint64_t x = fib(10);
     }
 
 
