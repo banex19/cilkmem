@@ -141,7 +141,6 @@ public:
         }
 
         nodes.clear();
-        edges.clear();
     }
 
     void Spawn(SPEdgeData &currentEdge, size_t regionId);

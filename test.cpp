@@ -83,9 +83,13 @@ __attribute__((noinline)) uint64_t rec(uint64_t n) {
 }
 
 
-int main()
+int main(int argc, char** argv)
 {
-
+    uint64_t n = 30;
+    if (argc > 1)
+    {
+        n = std::atoi(argv[1]);
+    }
     //  uint64_t x = fib(3);
 
 
@@ -105,7 +109,7 @@ int main()
 
     cilk_for(size_t i = 0; i < 1; ++i)
     {
-        uint64_t x = fib(30);
+        uint64_t x = fib(n);
     }
 
 

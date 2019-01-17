@@ -25,19 +25,22 @@ csirt.bc: $(LLVM_DIR)/projects/compiler-rt/lib/csi/csirt.c
 normal: test.cpp
 	$(CSICLANGPP) -g -fcilkplus -O3 test.cpp -o normal
 
-tool.bc: hooks.cpp hooks2.cpp SeriesParallelDAG.cpp SPComponent.cpp
+tool.bc: toolfiles
 	$(CSICLANGPP) -O3 -S -emit-llvm hooks.cpp -o tool1.bc
 	$(CSICLANGPP) -O3 -S -emit-llvm hooks2.cpp -o tool2.bc
 	$(CSICLANGPP) -O3 -S -emit-llvm SeriesParallelDAG.cpp -o tool3.bc
 	$(CSICLANGPP) -O3 -S -emit-llvm SPComponent.cpp -o tool4.bc
 	$(LLVMLINK) tool1.bc tool2.bc tool3.bc tool4.bc -o tool.bc
 
-tool.o:  hooks.cpp hooks2.cpp SeriesParallelDAG.cpp SPComponent.cpp
+tool.o: toolfiles
 	$(CSICLANGPP) -g -O3 -c hooks.cpp -o hooks1.o
 	$(CSICLANGPP) -g -O3 -c hooks2.cpp -o hooks2.o
 	$(CSICLANGPP) -g -O3 -c SeriesParallelDAG.cpp -o hooks3.o
 	$(CSICLANGPP) -g -O3 -c SPComponent.cpp -o hooks4.o
 	ld -r hooks1.o hooks2.o hooks3.o hooks4.o -o tool.o
+
+toolfiles: hooks.cpp hooks2.cpp SeriesParallelDAG.cpp SPComponent.cpp OutputPrinter.h MemPoolVector.h SeriesParallelDAG.h hooks.h common.h SPEdgeProducer.h
+	touch toolfiles
 
 instr.o: tool.bc test.cpp csirt.bc config.txt
 	$(CSICLANGPP) -fcilkplus -O3 -c -g -fcsi test.cpp -mllvm -csi-config-mode -mllvm "whitelist" -mllvm -csi-config-filename -mllvm "config.txt" -mllvm -csi-tool-bitcode -mllvm "tool.bc" -mllvm -csi-runtime-bitcode -mllvm "csirt.bc" -o instr.o 

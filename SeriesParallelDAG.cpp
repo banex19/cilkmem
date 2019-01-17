@@ -198,10 +198,12 @@ SPComponent SPDAG::AggregateUntilSync(SPEdgeProducer* edgeProducer, SPEdge * sta
 
     while (currentEdge->to != syncNode)
     {
-        DEBUG_ASSERT_EX(currentEdge->to->associatedSyncNode != nullptr, "[AggregateUntilSync] Node %zu has no sync node", currentEdge->to->id);
+        SPNode* toNode = currentEdge->to;
+
+        DEBUG_ASSERT_EX(currentEdge->to->associatedSyncNode != nullptr, "[AggregateUntilSync] Node %zu has no sync node", toNode->id);
 
         // There's another spawn in this path. Resolve that sub-component first.
-        subComponent.CombineSeries(AggregateComponentsFromNode(edgeProducer, currentEdge->to, threshold));
+        subComponent.CombineSeries(AggregateComponentsFromNode(edgeProducer, toNode, threshold));
 
         // The spawn has returned, continue from the only edge coming out of that 
         // spawn's associated sync node.

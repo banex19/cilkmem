@@ -1,7 +1,6 @@
 #pragma once
 #include "SeriesParallelDAG.h"
-#include <thread>      
-#include <chrono>         
+     
 
 class SPEdgeProducer {
 public:
@@ -43,16 +42,23 @@ public:
         DEBUG_ASSERT(dag != nullptr);
     }
 
-    SPEdge* Next(size_t sleep_ns = 100000) {
-        if (dag->IsComplete() && dag->edges.size() <= currentEdge)
+    SPEdge* Next(size_t sleep_ns = 0) {
+        // No more edges, stop.
+        if (dag->IsComplete() && (dag->edges.size() == 0 || (current != nullptr && current->next == nullptr)))
+        {
+            if (current != nullptr)
+                ReturnNodeToPool(current);
             return nullptr;
+        }
 
-        if (current == nullptr)
+        auto previous = current;
+
+        if (current == nullptr) // Get the first edge.
         {
             DEBUG_ASSERT(currentEdge == 0);
             current = dag->edges.GetHeadNode();
         }
-        else {
+        else { // Get the next edge from the current one.
             while (current->next == nullptr)
             {
                 // Wait for the edge.
@@ -65,13 +71,31 @@ public:
         DEBUG_ASSERT(current != nullptr);
 
         SPEdge* next = current->data;
+        DEBUG_ASSERT(next != nullptr);
 
         currentEdge++;
+
+        if (previous) // Return the previous edge.
+        {
+            ReturnNodeToPool(previous);
+        }
 
         return next;
     }
 
 private:
+    void ReturnNodeToPool(volatile PooledNode<SPEdge*>* node)
+    {
+        DEBUG_ASSERT(node != nullptr);
+
+        // Delete the edge.
+        delete node->data;
+        node->data = nullptr;
+
+        // Return the node.
+        dag->edges.ReturnToPool((PooledNode<SPEdge*>*)node);
+    }
+
     SPDAG* dag;
     size_t currentEdge = 0;
 
