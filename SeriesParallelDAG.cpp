@@ -8,8 +8,8 @@ void SPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId)
 {
     SPNode* spawnNode = AddNode();
 
-    if (debugVerbose)
-        std::cout << "Adding spawn node (id: " << spawnNode->id << ")\n";
+
+    out << "Adding spawn node (id: " << spawnNode->id << ")\n";
 
     if (currentStack.size() == 0 || afterSpawn)
     {
@@ -30,16 +30,15 @@ void SPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId)
         else { // Beginning of program.
             SPNode* startNode = AddNode();
 
-            if (debugVerbose)
-                std::cout << "Adding start node (id: " << startNode->id << ")\n";
+
+            out << "Adding start node (id: " << startNode->id << ")\n";
 
             AddEdge(startNode, spawnNode, currentEdge);
 
             firstNode = spawnNode;
         }
 
-        if (debugVerbose)
-            std::cout << "Adding sync node (id: " << syncNode->id << ")\n";
+        out << "Adding sync node (id: " << syncNode->id << ")\n";
     }
     else if (!afterSpawn)
     {
@@ -60,8 +59,7 @@ void SPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId)
 
             spawnNode->associatedSyncNode = syncNode;
 
-            if (debugVerbose)
-                std::cout << "Adding sync node (id: " << syncNode->id << ")\n";
+            out << "Adding sync node (id: " << syncNode->id << ")\n";
         }
         else {
             DEBUG_ASSERT(parentLevel->functionLevels.size() > 0 &&
@@ -92,13 +90,11 @@ void SPDAG::Sync(SPEdgeData & currentEdge, size_t regionId)
     if (regionId != 0)
         DEBUG_ASSERT(regionId == parentLevel->regionIds.back());
 
-    if (debugVerbose)
-        std::cout << "DAG sync: level " << currentStack.size() - 1 << "\n";
+    out << "DAG sync: level " << currentStack.size() - 1 << "\n";
 
     if (parentLevel->syncNodes.size() > 0)
     {
-        if (debugVerbose)
-            std::cout << "Left to sync for node " << parentLevel->syncNodes.back()->id << ": " <<
+        out << "Left to sync for node " << parentLevel->syncNodes.back()->id << ": " <<
             parentLevel->syncNodes.back()->numStrandsLeft << "\n";
     }
 
@@ -109,13 +105,11 @@ void SPDAG::Sync(SPEdgeData & currentEdge, size_t regionId)
         delete parentLevel;
         currentStack.pop_back();
 
-        if (debugVerbose)
-            std::cout << "Finished level " << currentStack.size() << "\n";
+        out << "Finished level " << currentStack.size() << "\n";
 
         if (currentStack.size() == 0) // The program is exiting.
         {
-            if (debugVerbose)
-                std::cout << "Adding exit node\n";
+            out << "Adding exit node\n";
 
             SPNode* exitNode = AddNode();
             AddEdge(pred, exitNode, currentEdge);
@@ -129,8 +123,7 @@ void SPDAG::Sync(SPEdgeData & currentEdge, size_t regionId)
         DEBUG_ASSERT(parentLevel->syncNodes.size() > 0);
         DEBUG_ASSERT(parentLevel->syncNodes.back()->numStrandsLeft == 2);
 
-        if (debugVerbose)
-            std::cout << "DAG sync (continued): level " << currentStack.size() - 1 << "\n";
+        out << "DAG sync (continued): level " << currentStack.size() - 1 << "\n";
     }
 
     DEBUG_ASSERT(parentLevel->syncNodes.size() > 0);
@@ -184,8 +177,7 @@ SPComponent SPDAG::AggregateComponentsFromNode(SPEdgeProducer* edgeProducer, SPN
     SPNode* sync = pivot->associatedSyncNode;
     DEBUG_ASSERT_EX(sync != nullptr, "[AggregateComponentsFromNode] Node %zu has no sync node", pivot->id);
 
-    if (debugVerbose)
-        std::cout << "Aggregating spawn from id " << pivot->id << " to id " << sync->id << "\n";
+    out << "Aggregating spawn from id " << pivot->id << " to id " << sync->id << "\n";
 
     SPEdge* next = edgeProducer->Next();
     SPComponent spawnPath = AggregateUntilSync(edgeProducer, next, sync, threshold);
@@ -223,7 +215,7 @@ SPComponent SPDAG::AggregateUntilSync(SPEdgeProducer* edgeProducer, SPEdge * sta
 
 void SPDAG::Print()
 {
-    std::cout << "Series Parallel DAG - Node count: " << nodes.size() << " - Edge count: " << edges.size() << "\n";
+    out << "Series Parallel DAG - Node count: " << nodes.size() << " - Edge count: " << edges.size() << "\n";
     for (size_t i = 0; i < edges.size(); ++i)
     {
         SPEdge* edge = edges[i];
@@ -231,13 +223,13 @@ void SPDAG::Print()
         DEBUG_ASSERT(edge->to);
         if (edge->forward)
         {
-            std::cout << "(" << edge->id << ") " << edge->from->id << " --> " << edge->to->id <<
+            out << "(" << edge->id << ") " << edge->from->id << " --> " << edge->to->id <<
                 " (max: " << edge->data.maxMemAllocated << " - total: " << edge->data.memAllocated << ")";
 
             if (edge->spawn)
-                std::cout << " [spawn] [sync node: " << edge->from->associatedSyncNode->id << "]";
+                out << " [spawn] [sync node: " << edge->from->associatedSyncNode->id << "]";
 
-            std::cout << "\n";
+            out << "\n";
         }
     }
 }

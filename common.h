@@ -1,6 +1,6 @@
 #pragma once
 #include <cassert>
-
+#include "OutputPrinter.h"
 
 #ifndef NDEBUG
 #define DEBUG_ASSERT(x) do { assert(x); } while(0)

@@ -2,7 +2,9 @@
 #include "hooks.h"
 #include <thread>
 
-SPDAG dag;
+OutputPrinter out{ std::cout };
+OutputPrinter alwaysOut{ std::cout };
+SPDAG dag{ out };
 SPEdgeData currentEdge;
 
 inline std::string demangle(const char* name)
@@ -45,33 +47,33 @@ extern "C" {
 
         int64_t watermark = aggregated.GetWatermark(threshold);
 
-        //   std::cout << "Memory high-water mark: " << watermark << "\n";
+        //  alwaysOut << "Memory high-water mark: " << watermark << "\n";
         if (watermark <= (memLimit / 2))
         {
-            //     std::cout << "Program will use LESS than " << memLimit << " bytes\n";
+            // alwaysOut << "Program will use LESS than " << memLimit << " bytes\n";
         }
         else {
-            //   std::cout << "Program will use AT LEAST " << (memLimit / 2) << " bytes\n";
+            // alwaysOut << "Program will use AT LEAST " << (memLimit / 2) << " bytes\n";
         }
     }
 
     void program_start() {
-
+        if (!debugVerbose)
+            out.DisablePrinting();
     }
 
     void program_exit() {
-        if (debugVerbose)
-            std::cout << "Exiting program\n";
+        out << "Exiting program\n";
 
-        //dag.WriteDotFile("sp.dot");
+        // dag.WriteDotFile("sp.dot");
 
         // Simulate a final sync.
         dag.Sync(currentEdge, false);
 
         // Print out the Series Parallel DAG.
-       // dag.Print();
+        // dag.Print();
 
-      //  dag.WriteDotFile("sp.dot");
+        // dag.WriteDotFile("sp.dot");
 
         if (!aggregatingThread) // Start aggregation if it wasn't being done online.
             aggregatingThread = new std::thread{ AggregateComponentsOnline };
@@ -119,15 +121,13 @@ extern "C" {
 
     void  __attribute__((noinline))  __csi_detach(const csi_id_t detach_id, const int32_t* has_spawned)
     {
-        if (debugVerbose)
-            std::cout << "Spawn id " << detach_id << " (spawned: " << *has_spawned << ") - Addr: " << has_spawned
+        out << "Spawn id " << detach_id << " (spawned: " << *has_spawned << ") - Addr: " << has_spawned
             << " - Level: " << currentLevel << "\n ";
 
         dag.Spawn(currentEdge, (uintptr_t)has_spawned);
         currentEdge = SPEdgeData();
 
-        if (debugVerbose)
-            std::cout << "-----------------------\n";
+        out << "-----------------------\n";
 
         if (!aggregatingThread) // Start aggregation online.
             aggregatingThread = new std::thread{ AggregateComponentsOnline };
@@ -141,14 +141,12 @@ extern "C" {
     void __csi_task_exit(const csi_id_t task_exit_id, const csi_id_t task_id,
         const csi_id_t detach_id)
     {
-        if (debugVerbose)
-            std::cout << "Task exit\n";
+        out << "Task exit\n";
 
         dag.Sync(currentEdge, 0);
         currentEdge = SPEdgeData();
 
-        if (debugVerbose)
-            std::cout << "-----------------------\n";
+        out << "-----------------------\n";
     }
 
     void __csi_detach_continue(const csi_id_t detach_continue_id,
@@ -158,8 +156,7 @@ extern "C" {
 
     void  __attribute__((noinline))  __csi_sync(const csi_id_t sync_id, const int32_t* has_spawned)
     {
-        if (debugVerbose)
-            std::cout << "Sync id " << sync_id << " (spawned: " << *has_spawned << ") - Addr: " << has_spawned
+        out << "Sync id " << sync_id << " (spawned: " << *has_spawned << ") - Addr: " << has_spawned
             << " - Level: " << currentLevel << "\n ";
 
         if (*has_spawned <= 0)
@@ -168,7 +165,6 @@ extern "C" {
         dag.Sync(currentEdge, (uintptr_t)has_spawned);
         currentEdge = SPEdgeData();
 
-        if (debugVerbose)
-            std::cout << "-----------------------\n";
+        out << "-----------------------\n";
     }
 }

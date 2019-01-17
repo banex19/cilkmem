@@ -128,7 +128,7 @@ struct SPLevel {
 
 class SPDAG {
 public:
-    SPDAG() {}
+    SPDAG(OutputPrinter& outputPrinter) : out(outputPrinter) {}
 
     ~SPDAG() {
         for (auto& node : nodes)
@@ -174,8 +174,7 @@ private:
         newEdge->spawn = spawn;
         from->successors.push_back(newEdge);
 
-        if (debugVerbose)
-            std::cout << "Adding edge " << from->id << " --> " << succ->id << "\n";
+        out << "Adding edge " << from->id << " --> " << succ->id << "\n";
 
         edges.push_back(newEdge);
         return newEdge;
@@ -195,6 +194,8 @@ private:
     size_t currentLevel = 0;
 
     bool isComplete = false;
+
+    OutputPrinter& out;
 
     friend class SPEdgeOfflineProducer;
     friend class SPEdgeOnlineProducer;
