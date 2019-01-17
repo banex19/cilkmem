@@ -2,7 +2,7 @@ CSICLANG?=$(LLVM_BIN)/clang
 CSICLANGPP?=$(LLVM_BIN)/clang++
 LLVMLINK?=$(LLVM_BIN)/llvm-link
 
-all: check-vars check-files instr normal
+all: check-vars check-files instr normal debug
 
 check-vars:
 ifndef LLVM_DIR
@@ -42,5 +42,10 @@ tool.o:  hooks.cpp hooks2.cpp SeriesParallelDAG.cpp SPComponent.cpp
 instr.o: tool.bc test.cpp csirt.bc config.txt
 	$(CSICLANGPP) -fcilkplus -O3 -c -g -fcsi test.cpp -mllvm -csi-config-mode -mllvm "whitelist" -mllvm -csi-config-filename -mllvm "config.txt" -mllvm -csi-tool-bitcode -mllvm "tool.bc" -mllvm -csi-runtime-bitcode -mllvm "csirt.bc" -o instr.o 
 
+debug: tool.bc test.cpp csirt.bc 
+	$(CSICLANGPP) -fcilkplus -g -O3 -S -emit-llvm -fcsi test.cpp -mllvm -csi-tool-bitcode -mllvm "tool.bc" -mllvm -csi-runtime-bitcode -mllvm "csirt.bc"  -o ir.txt 
+	$(CSICLANGPP) -fcilkplus -O3 -fverbose-asm -S -masm=intel -fcsi test.cpp -mllvm -csi-tool-bitcode -mllvm "tool.bc" -mllvm -csi-runtime-bitcode -mllvm "csirt.bc"  -o asm.txt
+	touch debug
+
 clean:
-	rm normal instr *.o *.bc
+	rm normal instr *.o *.bc ir.txt asm.txt
