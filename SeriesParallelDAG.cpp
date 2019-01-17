@@ -1,6 +1,7 @@
 #include "SeriesParallelDAG.h"
 #include <assert.h>
 #include <fstream>
+#include "SPEdgeProducer.h"
 
 // We have spawned a new task. Create the spawn node.
 void SPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId)
@@ -17,10 +18,14 @@ void SPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId)
         SPLevel* newLevel = new SPLevel(currentLevel, regionId, spawnNode);
         currentStack.push_back(newLevel);
 
+        SPNode* syncNode = AddNode();
+        newLevel->syncNodes.push_back(syncNode);
+        spawnNode->associatedSyncNode = syncNode;
+
         if (parentLevel != nullptr)
         {
             SPNode* parent = parentLevel->currentNode;
-            parent->AddSuccessor(AddEdge(), spawnNode, currentEdge, true);
+            AddEdge(parent, spawnNode, currentEdge, true);
         }
         else { // Beginning of program.
             SPNode* startNode = AddNode();
@@ -28,12 +33,10 @@ void SPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId)
             if (debugVerbose)
                 std::cout << "Adding start node (id: " << startNode->id << ")\n";
 
-            startNode->AddSuccessor(AddEdge(), spawnNode, currentEdge);
-        }
+            AddEdge(startNode, spawnNode, currentEdge);
 
-        SPNode* syncNode = AddNode();
-        newLevel->syncNodes.push_back(syncNode);
-        spawnNode->associatedSyncNode = syncNode;
+            firstNode = spawnNode;
+        }
 
         if (debugVerbose)
             std::cout << "Adding sync node (id: " << syncNode->id << ")\n";
@@ -41,8 +44,8 @@ void SPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId)
     else if (!afterSpawn)
     {
         SPLevel* parentLevel = GetParentLevel();
-        assert(parentLevel != nullptr);
-        assert(parentLevel->functionLevels.size() == 0 ||
+        DEBUG_ASSERT(parentLevel != nullptr);
+        DEBUG_ASSERT(parentLevel->functionLevels.size() == 0 ||
             parentLevel->functionLevels.back() <= currentLevel);
 
         // Check if we are still at the same level in the
@@ -61,16 +64,16 @@ void SPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId)
                 std::cout << "Adding sync node (id: " << syncNode->id << ")\n";
         }
         else {
-            assert(parentLevel->functionLevels.size() > 0 &&
+            DEBUG_ASSERT(parentLevel->functionLevels.size() > 0 &&
                 parentLevel->functionLevels.back() == currentLevel);
-            assert(regionId == parentLevel->regionIds.back());
+            DEBUG_ASSERT(regionId == parentLevel->regionIds.back());
             parentLevel->syncNodes.back()->numStrandsLeft = 2;
             spawnNode->associatedSyncNode = parentLevel->syncNodes.back();
         }
 
         SPNode* pred = parentLevel->currentNode;
         parentLevel->currentNode = spawnNode;
-        pred->AddSuccessor(AddEdge(), spawnNode, currentEdge);
+        AddEdge(pred, spawnNode, currentEdge);
     }
 
     lastNode = spawnNode;
@@ -83,11 +86,11 @@ void SPDAG::Sync(SPEdgeData & currentEdge, size_t regionId)
         return;
 
     SPLevel* parentLevel = GetParentLevel();
-    assert(parentLevel != nullptr);
+    DEBUG_ASSERT(parentLevel != nullptr);
 
     // regionId is provided only by sync events, not by task exit events.
     if (regionId != 0)
-        assert(regionId == parentLevel->regionIds.back());
+        DEBUG_ASSERT(regionId == parentLevel->regionIds.back());
 
     if (debugVerbose)
         std::cout << "DAG sync: level " << currentStack.size() - 1 << "\n";
@@ -98,7 +101,6 @@ void SPDAG::Sync(SPEdgeData & currentEdge, size_t regionId)
             std::cout << "Left to sync for node " << parentLevel->syncNodes.back()->id << ": " <<
             parentLevel->syncNodes.back()->numStrandsLeft << "\n";
     }
-
 
     SPNode* pred = lastNode;
 
@@ -116,20 +118,22 @@ void SPDAG::Sync(SPEdgeData & currentEdge, size_t regionId)
                 std::cout << "Adding exit node\n";
 
             SPNode* exitNode = AddNode();
-            pred->AddSuccessor(AddEdge(), exitNode, currentEdge);
+            AddEdge(pred, exitNode, currentEdge);
+
+            isComplete = true;
             return;
         }
 
         parentLevel = GetParentLevel();
-        assert(parentLevel != nullptr);
-        assert(parentLevel->syncNodes.size() > 0);
-        assert(parentLevel->syncNodes.back()->numStrandsLeft == 2);
+        DEBUG_ASSERT(parentLevel != nullptr);
+        DEBUG_ASSERT(parentLevel->syncNodes.size() > 0);
+        DEBUG_ASSERT(parentLevel->syncNodes.back()->numStrandsLeft == 2);
 
         if (debugVerbose)
             std::cout << "DAG sync (continued): level " << currentStack.size() - 1 << "\n";
     }
 
-    assert(parentLevel->syncNodes.size() > 0);
+    DEBUG_ASSERT(parentLevel->syncNodes.size() > 0);
     SPNode* syncNode = parentLevel->syncNodes.back();
 
     if (syncNode->numStrandsLeft == 1) // Horizontal sync.
@@ -146,45 +150,55 @@ void SPDAG::Sync(SPEdgeData & currentEdge, size_t regionId)
         parentLevel->PopFunctionLevel();
     }
 
-    pred->AddSuccessor(AddEdge(), syncNode, currentEdge, spawn);
+    AddEdge(pred, syncNode, currentEdge, spawn);
 
     lastNode = syncNode;
     afterSpawn = false;
 }
 
-SPComponent SPDAG::AggregateComponents(int64_t threshold)
+SPComponent SPDAG::AggregateComponents(SPEdgeProducer* edgeProducer, int64_t threshold)
 {
-    if (nodes.size() == 0)
+    if (IsComplete() && firstNode == nullptr)
         return SPComponent();
 
-    assert(edges.size() >= 2);
+    DEBUG_ASSERT(firstNode != nullptr);
 
-    SPComponent start{ edges.front()->data };
-    SPComponent end{ edges.back()->data };
+    SPComponent start{ edgeProducer->NextData() };
 
-    start.CombineSeries(AggregateComponentsFromNode(nodes[0], threshold));
+    start.CombineSeries(AggregateComponentsFromNode(edgeProducer, firstNode, threshold));
+
+    SPComponent end{ edgeProducer->NextData() };
+
     start.CombineSeries(end);
+
+    // Make sure there are no more edges to consume.
+    DEBUG_ASSERT(edgeProducer->Next() == nullptr);
+    DEBUG_ASSERT(IsComplete());
 
     return start;
 }
 
 
-SPComponent SPDAG::AggregateComponentsFromNode(SPNode * pivot, int64_t threshold)
+SPComponent SPDAG::AggregateComponentsFromNode(SPEdgeProducer* edgeProducer, SPNode * pivot, int64_t threshold)
 {
     SPNode* sync = pivot->associatedSyncNode;
-    assert(sync != nullptr);
-    assert(pivot->successors.size() == 2);
+    DEBUG_ASSERT_EX(sync != nullptr, "[AggregateComponentsFromNode] Node %zu has no sync node", pivot->id);
 
-    SPComponent left = AggregateUntilSync(pivot->successors[0], sync, threshold);
-    SPComponent right = AggregateUntilSync(pivot->successors[1], sync, threshold);
+    if (debugVerbose)
+        std::cout << "Aggregating spawn from id " << pivot->id << " to id " << sync->id << "\n";
 
-    left.CombineParallel(right, threshold);
+    SPEdge* next = edgeProducer->Next();
+    SPComponent spawnPath = AggregateUntilSync(edgeProducer, next, sync, threshold);
 
-    return left;
+    next = edgeProducer->Next();
+    SPComponent continuation = AggregateUntilSync(edgeProducer, next, sync, threshold);
 
+    spawnPath.CombineParallel(continuation, threshold);
+
+    return spawnPath;
 }
 
-SPComponent SPDAG::AggregateUntilSync(SPEdge * start, SPNode * syncNode, int64_t threshold)
+SPComponent SPDAG::AggregateUntilSync(SPEdgeProducer* edgeProducer, SPEdge * start, SPNode * syncNode, int64_t threshold)
 {
     SPComponent subComponent{ start->data };
 
@@ -192,17 +206,16 @@ SPComponent SPDAG::AggregateUntilSync(SPEdge * start, SPNode * syncNode, int64_t
 
     while (currentEdge->to != syncNode)
     {
-        subComponent.CombineSeries(AggregateComponentsFromNode(currentEdge->to, threshold));
+        DEBUG_ASSERT_EX(currentEdge->to->associatedSyncNode != nullptr, "[AggregateUntilSync] Node %zu has no sync node", currentEdge->to->id);
 
-        SPNode* nextSync = currentEdge->to->associatedSyncNode;
-        if (nextSync != nullptr)
-        {
-            assert(nextSync->successors.size() == 1);
-            currentEdge = nextSync->successors[0];
-            subComponent.CombineSeries(SPComponent(currentEdge->data));
-        }
+        // There's another spawn in this path. Resolve that sub-component first.
+        subComponent.CombineSeries(AggregateComponentsFromNode(edgeProducer, currentEdge->to, threshold));
+
+        // The spawn has returned, continue from the only edge coming out of that 
+        // spawn's associated sync node.
+        currentEdge = edgeProducer->Next();
+        subComponent.CombineSeries(SPComponent(currentEdge->data));
     }
-
 
     return subComponent;
 }
@@ -211,10 +224,11 @@ SPComponent SPDAG::AggregateUntilSync(SPEdge * start, SPNode * syncNode, int64_t
 void SPDAG::Print()
 {
     std::cout << "Series Parallel DAG - Node count: " << nodes.size() << " - Edge count: " << edges.size() << "\n";
-    for (auto& edge : edges)
+    for (size_t i = 0; i < edges.size(); ++i)
     {
-        assert(edge->from);
-        assert(edge->to);
+        SPEdge* edge = edges[i];
+        DEBUG_ASSERT(edge->from);
+        DEBUG_ASSERT(edge->to);
         if (edge->forward)
         {
             std::cout << "(" << edge->id << ") " << edge->from->id << " --> " << edge->to->id <<
@@ -232,14 +246,15 @@ void SPDAG::WriteDotFile(const std::string& filename)
 {
     std::ofstream file{ filename };
 
-    assert(file);
+    DEBUG_ASSERT(file);
 
     file << "digraph {\nrankdir=LR\n";
 
-    for (auto& edge : edges)
+    for (size_t i = 0; i < edges.size(); ++i)
     {
-        assert(edge->from);
-        assert(edge->to);
+        SPEdge* edge = edges[i];
+        DEBUG_ASSERT(edge->from);
+        DEBUG_ASSERT(edge->to);
         if (edge->forward)
         {
             file << edge->from->id << " -> " << edge->to->id << " [label=" << edge->data.memAllocated;

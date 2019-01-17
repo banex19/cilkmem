@@ -12,3 +12,4 @@
 *.dot
 *.pdf
 *.tmp
+perf*

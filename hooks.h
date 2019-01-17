@@ -6,6 +6,7 @@
 #include <string>
 #include <cstring>
 #include "SeriesParallelDAG.h"
+#include "SPEdgeProducer.h"
 #include <cxxabi.h>
 #include <memory>
 #include <cassert>

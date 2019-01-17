@@ -43,7 +43,7 @@ __attribute__((noinline)) int testSpawn(int x)
 
 
 __attribute__((noinline)) uint64_t fib(uint64_t n) {
-    std::cout << "fib(" << n << ")\n";
+   // std::cout << "fib(" << n << ")\n";
     if (n < 2) {
         return n;
     }
@@ -105,7 +105,7 @@ int main()
 
     cilk_for(size_t i = 0; i < 1; ++i)
     {
-        uint64_t x = fib(10);
+        uint64_t x = fib(30);
     }
 
 

@@ -1,6 +1,6 @@
 
 #include "hooks.h"
-
+#include <thread>
 
 SPDAG dag;
 SPEdgeData currentEdge;
@@ -27,43 +27,62 @@ inline std::string demangle(const char* name)
 std::unordered_map<void*, size_t> allocations;
 extern size_t currentLevel;
 
-extern "C" {
-    void program_exit() {
-        std::cout << "Exiting program\n";
+std::thread* aggregatingThread = nullptr;
 
-        dag.WriteDotFile("sp.dot");
+extern "C" {
+
+    void AggregateComponentsOnline()
+    {
+        int64_t memLimit = 10000;
+        int64_t p = 2;
+        int64_t threshold = memLimit / (2 * p);
+
+        SPEdgeOnlineProducer producer{ &dag };
+
+        SPComponent aggregated = dag.AggregateComponents(&producer, threshold);
+
+        // aggregated.Print();
+
+        int64_t watermark = aggregated.GetWatermark(threshold);
+
+        //   std::cout << "Memory high-water mark: " << watermark << "\n";
+        if (watermark <= (memLimit / 2))
+        {
+            //     std::cout << "Program will use LESS than " << memLimit << " bytes\n";
+        }
+        else {
+            //   std::cout << "Program will use AT LEAST " << (memLimit / 2) << " bytes\n";
+        }
+    }
+
+    void program_start() {
+
+    }
+
+    void program_exit() {
+        if (debugVerbose)
+            std::cout << "Exiting program\n";
+
+        //dag.WriteDotFile("sp.dot");
 
         // Simulate a final sync.
         dag.Sync(currentEdge, false);
 
         // Print out the Series Parallel DAG.
-        dag.Print();
+       // dag.Print();
 
-        dag.WriteDotFile("sp.dot");
+      //  dag.WriteDotFile("sp.dot");
 
-        int64_t memLimit = 10000;
-        int64_t p = 2;
-        int64_t threshold = memLimit / (2 * p);
+        if (!aggregatingThread) // Start aggregation if it wasn't being done online.
+            aggregatingThread = new std::thread{ AggregateComponentsOnline };
 
-        SPComponent aggregated = dag.AggregateComponents(threshold);
-
-        aggregated.Print();
-
-        int64_t watermark = aggregated.GetWatermark(threshold);
-
-        std::cout << "Watermark: " << watermark << "\n";
-        if (watermark <= (memLimit / 2))
-        {
-            std::cout << "Program will use LESS than " << memLimit << " bytes\n";
-        }
-        else {
-            std::cout << "Program will use AT LEAST " << (memLimit / 2) << " bytes\n";
-        }
-
+        aggregatingThread->join();
     }
 
     void* __csi_interpose_malloc(size_t size) {
+
         void* mem = malloc(size);
+        return mem;
 
         if (size == 0) // Treat zero-allocations as non-zero for sake of testing.
             size = 1;
@@ -80,7 +99,7 @@ extern "C" {
 
     void  __csi_interpose_free(void* mem) {
         size_t size = allocations[mem];
-        assert(size > 0);
+        DEBUG_ASSERT(size > 0);
 
         currentEdge.memAllocated -= size;
 
@@ -109,6 +128,9 @@ extern "C" {
 
         if (debugVerbose)
             std::cout << "-----------------------\n";
+
+        if (!aggregatingThread) // Start aggregation online.
+            aggregatingThread = new std::thread{ AggregateComponentsOnline };
     }
 
     void __csi_task(const csi_id_t task_id, const csi_id_t detach_id,

@@ -64,7 +64,7 @@ void SPComponent::CombineParallel(const SPComponent & other, int64_t threshold)
 int64_t SPComponent::GetWatermark(int64_t threshold)
 {
     auto nullableWatermark = NullMax(maxSingle > threshold ? Nullable<int64_t>(maxSingle) : Nullable<int64_t>::NULL_VALUE, multiRobust, Nullable<int64_t>(0));
-    assert(nullableWatermark.HasValue());
+    DEBUG_ASSERT(nullableWatermark.HasValue());
 
     return nullableWatermark.GetValue();
 }

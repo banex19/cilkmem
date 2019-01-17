@@ -3,12 +3,14 @@
 #include <iostream>
 #include <unordered_map>
 #include <cstdint>
-#include <cassert>
+#include "common.h"
+#include "MemPoolVector.h"
 
 
 constexpr bool debugVerbose = false;
 
 struct SPNode;
+class SPEdgeProducer;
 
 template <typename T>
 class Nullable {
@@ -23,7 +25,7 @@ public:
     }
 
     template <typename U>
-    friend std::ostream& operator<< (std::ostream & os,  const Nullable<U>  & obj);
+    friend std::ostream& operator<< (std::ostream & os, const Nullable<U>  & obj);
 
     Nullable<T> Max(const Nullable<T>& other) const {
         if (!HasValue())
@@ -90,23 +92,12 @@ struct SPEdge {
     }
 };
 
+
 struct SPNode {
     size_t id;
     std::vector<SPEdge*> successors;
     size_t numStrandsLeft = 2;
     SPNode* associatedSyncNode;
-
-    void AddSuccessor(SPEdge* newEdgeForward, SPNode* succ, const SPEdgeData &data, bool spawn = false) {
-        newEdgeForward->from = this;
-        newEdgeForward->to = succ;
-        newEdgeForward->data = data;
-        newEdgeForward->forward = true;
-        newEdgeForward->spawn = spawn;
-        successors.push_back(newEdgeForward);
-
-        if (debugVerbose)
-        std::cout << "Adding edge " << this->id << " --> " << succ->id << "\n";
-    }
 };
 
 struct SPLevel {
@@ -142,8 +133,12 @@ public:
     ~SPDAG() {
         for (auto& node : nodes)
             delete node;
-        for (auto & edge : edges)
+
+        for (size_t i = 0; i < edges.size(); ++i)
+        {
+            SPEdge* edge = edges[i];
             delete edge;
+        }
 
         nodes.clear();
         edges.clear();
@@ -152,7 +147,9 @@ public:
     void Spawn(SPEdgeData &currentEdge, size_t regionId);
     void Sync(SPEdgeData &currentEdge, size_t regionId);
 
-    SPComponent AggregateComponents(int64_t threshold);
+    SPComponent AggregateComponents(SPEdgeProducer* edgeProducer, int64_t threshold);
+
+    bool IsComplete() { return isComplete; }
 
     void IncrementLevel() { currentLevel++; }
     void DecrementLevel() { currentLevel--; }
@@ -161,21 +158,45 @@ public:
     void WriteDotFile(const std::string& filename);
 
 private:
-
-    SPComponent AggregateComponentsFromNode(SPNode* pivot, int64_t threshold);
-    SPComponent AggregateUntilSync(SPEdge* start, SPNode* syncNode, int64_t threshold);
+    SPComponent AggregateComponentsFromNode(SPEdgeProducer* edgeProducer, SPNode* pivot, int64_t threshold);
+    SPComponent AggregateUntilSync(SPEdgeProducer* edgeProducer, SPEdge* start, SPNode* syncNode, int64_t threshold);
 
     SPNode* AddNode() { SPNode* newNode = new SPNode(); newNode->id = nodes.size(); nodes.push_back(newNode); return newNode; }
-    SPEdge* AddEdge() { SPEdge* newEdge = new SPEdge(); newEdge->id = edges.size(); edges.push_back(newEdge); return newEdge; }
+
+    SPEdge* AddEdge(SPNode* from, SPNode* succ, const SPEdgeData &data, bool spawn = false) {
+        SPEdge* newEdge = new SPEdge();
+        newEdge->id = edges.size();
+
+        newEdge->from = from;
+        newEdge->to = succ;
+        newEdge->data = data;
+        newEdge->forward = true;
+        newEdge->spawn = spawn;
+        from->successors.push_back(newEdge);
+
+        if (debugVerbose)
+            std::cout << "Adding edge " << from->id << " --> " << succ->id << "\n";
+
+        edges.push_back(newEdge);
+        return newEdge;
+    }
+
 
     SPLevel* GetParentLevel() { if (currentStack.size() > 0) return currentStack[currentStack.size() - 1]; else return nullptr; }
 
     std::vector<SPNode*> nodes;
-    std::vector<SPEdge*> edges;
+    MemPoolVector<SPEdge*> edges;
 
     std::vector<SPLevel*> currentStack;
     SPNode* lastNode;
+    SPNode* firstNode;
 
     bool afterSpawn = false;
     size_t currentLevel = 0;
+
+    bool isComplete = false;
+
+    friend class SPEdgeOfflineProducer;
+    friend class SPEdgeOnlineProducer;
+    friend class SPNode;
 };

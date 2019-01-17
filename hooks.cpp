@@ -7,6 +7,7 @@ extern SPDAG dag;
 
 extern "C" {
 
+    void program_start();
     void program_exit();
 
     void __csi_init() {
@@ -18,6 +19,11 @@ extern "C" {
 
     __attribute__((noinline))   void __csi_func_entry(const csi_id_t func_id, const func_prop_t prop)
     {
+        if (strcmp(__csi_get_func_source_loc(func_id)->name, "main") == 0)
+        {
+            program_start();
+        }
+
         currentLevel++;
         dag.IncrementLevel();
     }
