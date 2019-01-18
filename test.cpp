@@ -7,23 +7,19 @@
 
 void* mem = nullptr;
 
-int test(int x)
-{
+int test(int x) {
     return printf("Value: %d\n", x);
 }
 
-void* __attribute__((noinline)) testAlloc(size_t size)
-{
+void* __attribute__((noinline)) testAlloc(size_t size) {
     return malloc(size);
 }
 
-void testFree(void* mem)
-{
+void testFree(void* mem) {
     return free(mem);
 }
 
-__attribute__((noinline)) int testSpawn(int x)
-{
+__attribute__((noinline)) int testSpawn(int x) {
     void* y = cilk_spawn testAlloc((size_t)x);
 
     int k = printf("Testing subspawn\n");
@@ -43,8 +39,9 @@ __attribute__((noinline)) int testSpawn(int x)
 
 
 __attribute__((noinline)) uint64_t fib(uint64_t n) {
-   // std::cout << "fib(" << n << ")\n";
-    if (n < 2) {
+    // std::cout << "fib(" << n << ")\n";
+    if (n < 2)
+    {
         return n;
     }
 
@@ -62,7 +59,8 @@ __attribute__((noinline)) uint64_t fib(uint64_t n) {
 
 __attribute__((noinline)) uint64_t rec(uint64_t n) {
     std::cout << "rec(" << n << ")\n";
-    if (n < 2) {
+    if (n < 2)
+    {
         return n;
     }
 
@@ -83,8 +81,7 @@ __attribute__((noinline)) uint64_t rec(uint64_t n) {
 }
 
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
     uint64_t n = 30;
     if (argc > 1)
     {
@@ -99,30 +96,29 @@ int main(int argc, char** argv)
      //  uint64_t x = cilk_spawn test(10);
 
     mem = malloc(100);
-   // uint64_t x = cilk_spawn fib(2);
-  //  uint64_t y =  testSpawn(100);
+    // uint64_t x = cilk_spawn fib(2);
+   //  uint64_t y =  testSpawn(100);
 
-   /* for(size_t i = 0; i < 2; ++i)
-    {
-        mem = cilk_spawn testAlloc(10);
-    } */
+    /* for(size_t i = 0; i < 2; ++i)
+     {
+         mem = cilk_spawn testAlloc(10);
+     } */
 
-    cilk_for(size_t i = 0; i < 1; ++i)
-    {
+    cilk_for(size_t i = 0; i < 1; ++i) {
         uint64_t x = fib(n);
     }
 
 
     mem = malloc(123);
 
-  //  cilk_sync;
+    //  cilk_sync;
 
-  //  uint64_t x = cilk_spawn fib(3);
+    //  uint64_t x = cilk_spawn fib(3);
 
     mem = malloc(500);
 
 
-  //  printf("Returned %lu and %lu\n", x, y);
+    //  printf("Returned %lu and %lu\n", x, y);
 
 
     return 0;

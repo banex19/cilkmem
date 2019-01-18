@@ -7,8 +7,7 @@ OutputPrinter alwaysOut{ std::cout };
 SPDAG dag{ out };
 SPEdgeData currentEdge;
 
-inline std::string demangle(const char* name)
-{
+inline std::string demangle(const char* name) {
     int status = -1;
 
     std::unique_ptr<char, void(*)(void*)> res{ abi::__cxa_demangle(name, NULL, NULL, &status), std::free };
@@ -33,8 +32,7 @@ std::thread* aggregatingThread = nullptr;
 
 extern "C" {
 
-    void AggregateComponentsOnline()
-    {
+    void AggregateComponentsOnline() {
         int64_t memLimit = 10000;
         int64_t p = 2;
         int64_t threshold = memLimit / (2 * p);
@@ -52,7 +50,8 @@ extern "C" {
         {
             // alwaysOut << "Program will use LESS than " << memLimit << " bytes\n";
         }
-        else {
+        else
+        {
             // alwaysOut << "Program will use AT LEAST " << (memLimit / 2) << " bytes\n";
         }
     }
@@ -110,17 +109,12 @@ extern "C" {
     }
 
     void __attribute__((noinline))  __csi_before_call(const csi_id_t call_id, const csi_id_t func_id,
-        const call_prop_t prop)
-    {
-    }
+        const call_prop_t prop) {}
 
     void __attribute__((noinline))  __csi_after_call(const csi_id_t call_id, const csi_id_t func_id,
-        const call_prop_t prop)
-    {
-    }
+        const call_prop_t prop) {}
 
-    void  __attribute__((noinline))  __csi_detach(const csi_id_t detach_id, const int32_t* has_spawned)
-    {
+    void  __attribute__((noinline))  __csi_detach(const csi_id_t detach_id, const int32_t* has_spawned) {
         out << "Spawn id " << detach_id << " (spawned: " << *has_spawned << ") - Addr: " << has_spawned
             << " - Level: " << currentLevel << "\n ";
 
@@ -134,13 +128,10 @@ extern "C" {
     }
 
     void __csi_task(const csi_id_t task_id, const csi_id_t detach_id,
-        void *sp)
-    {
-    }
+        void *sp) {}
 
     void __csi_task_exit(const csi_id_t task_exit_id, const csi_id_t task_id,
-        const csi_id_t detach_id)
-    {
+        const csi_id_t detach_id) {
         out << "Task exit\n";
 
         dag.Sync(currentEdge, 0);
@@ -150,12 +141,9 @@ extern "C" {
     }
 
     void __csi_detach_continue(const csi_id_t detach_continue_id,
-        const csi_id_t detach_id)
-    {
-    }
+        const csi_id_t detach_id) {}
 
-    void  __attribute__((noinline))  __csi_sync(const csi_id_t sync_id, const int32_t* has_spawned)
-    {
+    void  __attribute__((noinline))  __csi_sync(const csi_id_t sync_id, const int32_t* has_spawned) {
         out << "Sync id " << sync_id << " (spawned: " << *has_spawned << ") - Addr: " << has_spawned
             << " - Level: " << currentLevel << "\n ";
 

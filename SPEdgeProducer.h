@@ -28,7 +28,7 @@ public:
                 ReturnNodeToPool(current);
                 current = nullptr;
             }
-            
+
             return nullptr;
         }
 
@@ -39,7 +39,8 @@ public:
             DEBUG_ASSERT(currentEdge == 0);
             current = dag->edges.GetHeadNode();
         }
-        else { // Get the next edge from the current one.
+        else
+        { // Get the next edge from the current one.
             while (current->next == nullptr)
             {
                 // Wait for the edge.
@@ -65,8 +66,7 @@ public:
     }
 
 private:
-    void ReturnNodeToPool(volatile PooledNode<SPEdge*>* node)
-    {
+    void ReturnNodeToPool(volatile PooledNode<SPEdge*>* node) {
         DEBUG_ASSERT(node != nullptr);
 
         // Delete the edge.

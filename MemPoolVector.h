@@ -20,8 +20,7 @@ public:
 
     }
 
-    MemPoolVector(size_t poolSize) : poolSize(poolSize)
-    {
+    MemPoolVector(size_t poolSize) : poolSize(poolSize) {
         AddPool();
     }
 
@@ -40,7 +39,8 @@ public:
         {
             head = tail = next;
         }
-        else {
+        else
+        {
             DEBUG_ASSERT(tail != nullptr);
             tail->next = next;
             tail = next;
@@ -96,7 +96,8 @@ public:
             DEBUG_ASSERT(freeTail == nullptr);
             freeHead = freeTail = node;
         }
-        else {
+        else
+        {
             DEBUG_ASSERT(freeTail != nullptr);
             freeTail->next = node;
             freeTail = node;
@@ -137,8 +138,7 @@ private:
         return GetNextAvailable(out_fromFreeList);
     }
 
-    PooledNode<T>* GetBoundNode()
-    {
+    PooledNode<T>* GetBoundNode() {
         return pools.back() + (poolSize - 1);
     }
 

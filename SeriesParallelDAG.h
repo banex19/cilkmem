@@ -84,8 +84,7 @@ struct SPEdge {
     bool forward;
     bool spawn;
 
-    bool operator==(const SPEdge& other) const
-    {
+    bool operator==(const SPEdge& other) const {
         return from == other.from && to == other.to
             && data == other.data;
         ;
@@ -105,14 +104,12 @@ struct SPLevel {
     std::vector<size_t> functionLevels;
     std::vector<size_t> regionIds;
 
-    SPLevel(size_t level, size_t regionId, SPNode* currentNode) : currentNode(currentNode)
-    {
+    SPLevel(size_t level, size_t regionId, SPNode* currentNode) : currentNode(currentNode) {
         functionLevels.push_back(level);
         regionIds.push_back(regionId);
     }
 
-    void PushFunctionLevel(SPNode* syncNode, size_t functionLevel, size_t regionId)
-    {
+    void PushFunctionLevel(SPNode* syncNode, size_t functionLevel, size_t regionId) {
         syncNodes.push_back(syncNode);
         functionLevels.push_back(functionLevel);
         regionIds.push_back(regionId);
