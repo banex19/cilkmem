@@ -4,7 +4,7 @@
 #include "SPEdgeProducer.h"
 
 // We have spawned a new task. Create the spawn node.
-void SPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId) {
+void FullSPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId) {
     SPNode* spawnNode = AddNode();
 
 
@@ -79,7 +79,7 @@ void SPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId) {
     afterSpawn = true;
 }
 
-void SPDAG::Sync(SPEdgeData & currentEdge, size_t regionId) {
+void FullSPDAG::Sync(SPEdgeData & currentEdge, size_t regionId) {
     if (nodes.size() == 0)
         return;
 
@@ -149,9 +149,10 @@ void SPDAG::Sync(SPEdgeData & currentEdge, size_t regionId) {
     afterSpawn = false;
 }
 
-SPComponent SPDAG::AggregateComponents(SPEdgeProducer* edgeProducer, int64_t threshold) {
+SPComponent FullSPDAG::AggregateComponents(SPEdgeProducer* edgeProducer, int64_t threshold) {
     if (IsComplete() && firstNode == nullptr)
         return SPComponent();
+
 
     DEBUG_ASSERT(firstNode != nullptr);
 
@@ -171,7 +172,7 @@ SPComponent SPDAG::AggregateComponents(SPEdgeProducer* edgeProducer, int64_t thr
 }
 
 
-SPComponent SPDAG::AggregateComponentsFromNode(SPEdgeProducer* edgeProducer, SPNode * pivot, int64_t threshold) {
+SPComponent FullSPDAG::AggregateComponentsFromNode(SPEdgeProducer* edgeProducer, SPNode * pivot, int64_t threshold) {
     SPNode* sync = pivot->associatedSyncNode;
     DEBUG_ASSERT_EX(sync != nullptr, "[AggregateComponentsFromNode] Node %zu has no sync node", pivot->id);
 
@@ -188,7 +189,7 @@ SPComponent SPDAG::AggregateComponentsFromNode(SPEdgeProducer* edgeProducer, SPN
     return spawnPath;
 }
 
-SPComponent SPDAG::AggregateUntilSync(SPEdgeProducer* edgeProducer, SPEdge * start, SPNode * syncNode, int64_t threshold) {
+SPComponent FullSPDAG::AggregateUntilSync(SPEdgeProducer* edgeProducer, SPEdge * start, SPNode * syncNode, int64_t threshold) {
     SPComponent subComponent{ start->data };
 
     SPEdge* currentEdge = start;
@@ -212,7 +213,7 @@ SPComponent SPDAG::AggregateUntilSync(SPEdgeProducer* edgeProducer, SPEdge * sta
 }
 
 
-void SPDAG::Print() {
+void FullSPDAG::Print() {
     out << "Series Parallel DAG - Node count: " << nodes.size() << " - Edge count: " << edges.size() << "\n";
     for (size_t i = 0; i < edges.size(); ++i)
     {
@@ -232,7 +233,7 @@ void SPDAG::Print() {
     }
 }
 
-void SPDAG::WriteDotFile(const std::string& filename) {
+void FullSPDAG::WriteDotFile(const std::string& filename) {
     std::ofstream file{ filename };
 
     DEBUG_ASSERT(file);

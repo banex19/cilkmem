@@ -3,7 +3,7 @@
 
 size_t currentLevel = 0;
 
-extern SPDAG dag;
+extern SPDAG* dag;
 
 extern "C" {
 
@@ -22,7 +22,7 @@ extern "C" {
         }
 
         currentLevel++;
-        dag.IncrementLevel();
+        dag->IncrementLevel();
     }
 
     __attribute__((always_inline)) void __csi_func_exit(const csi_id_t func_exit_id,
@@ -32,7 +32,7 @@ extern "C" {
             program_exit();
         }
 
-        dag.DecrementLevel();
+        dag->DecrementLevel();
         currentLevel--;
     }
 }

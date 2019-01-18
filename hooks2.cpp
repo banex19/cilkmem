@@ -2,9 +2,13 @@
 #include "hooks.h"
 #include <thread>
 
+
+const bool fullSPDAG = true;
+const bool runOnline = true;
+
 OutputPrinter out{ std::cout };
 OutputPrinter alwaysOut{ std::cout };
-SPDAG dag{ out };
+SPDAG* dag = nullptr;
 SPEdgeData currentEdge;
 
 inline std::string demangle(const char* name) {
@@ -25,7 +29,6 @@ inline std::string demangle(const char* name) {
         return demangled.substr(0, demangled.find_first_of('('));
 }
 
-std::unordered_map<void*, size_t> allocations;
 extern size_t currentLevel;
 
 std::thread* aggregatingThread = nullptr;
@@ -37,15 +40,18 @@ extern "C" {
         int64_t p = 2;
         int64_t threshold = memLimit / (2 * p);
 
-        SPEdgeOnlineProducer producer{ &dag };
+        SPEdgeProducer* producer = nullptr;
 
-        SPComponent aggregated = dag.AggregateComponents(&producer, threshold);
+        if (fullSPDAG)
+            producer = new SPEdgeFullOnlineProducer{ static_cast<FullSPDAG*>(dag) };
 
-        // aggregated.Print();
+        SPComponent aggregated = dag->AggregateComponents(producer, threshold);
+
+        aggregated.Print();
 
         int64_t watermark = aggregated.GetWatermark(threshold);
 
-        //  alwaysOut << "Memory high-water mark: " << watermark << "\n";
+        alwaysOut << "Memory high-water mark: " << watermark << "\n";
         if (watermark <= (memLimit / 2))
         {
             // alwaysOut << "Program will use LESS than " << memLimit << " bytes\n";
@@ -54,9 +60,22 @@ extern "C" {
         {
             // alwaysOut << "Program will use AT LEAST " << (memLimit / 2) << " bytes\n";
         }
+
+        delete producer;
     }
 
     void program_start() {
+        if (!dag)
+        {
+            if (fullSPDAG)
+                dag = new FullSPDAG(out);
+            else
+            {
+                alwaysOut << "ERROR: Barebone SPDAG not supported yet\n";
+                exit(-1);
+            }
+        }
+
         if (!debugVerbose)
             out.DisablePrinting();
     }
@@ -64,26 +83,26 @@ extern "C" {
     void program_exit() {
         out << "Exiting program\n";
 
-        // dag.WriteDotFile("sp.dot");
+        // dag->WriteDotFile("sp.dot");
 
         // Simulate a final sync.
-        dag.Sync(currentEdge, false);
+        dag->Sync(currentEdge, false);
 
-        // Print out the Series Parallel DAG.
-        // dag.Print();
+        // Print out the Series Parallel dag.
+        // dag->Print();
 
-        // dag.WriteDotFile("sp.dot");
+        // dag->WriteDotFile("sp.dot");
 
-        if (!aggregatingThread) // Start aggregation if it wasn't being done online.
-            aggregatingThread = new std::thread{ AggregateComponentsOnline };
+        // if (!aggregatingThread) // Start aggregation if it wasn't being done online.
+        //   aggregatingThread = new std::thread{ AggregateComponentsOnline };
 
         aggregatingThread->join();
     }
 
+    // Prepend the size to each allocated block so it can be retrieved
+    // when calling free().
     void* __csi_interpose_malloc(size_t size) {
-
-        void* mem = malloc(size);
-        return mem;
+        uint8_t* mem = (uint8_t*) malloc(sizeof(size_t) + size);
 
         if (size == 0) // Treat zero-allocations as non-zero for sake of testing.
             size = 1;
@@ -93,18 +112,19 @@ extern "C" {
         if (currentEdge.memAllocated > currentEdge.maxMemAllocated)
             currentEdge.maxMemAllocated = currentEdge.memAllocated;
 
-        allocations[mem] = size;
+        // Store the size of the allocation.
+        memcpy(mem, &size, sizeof(size_t));
 
-        return mem;
+        return mem + sizeof(size_t);
     }
 
     void  __csi_interpose_free(void* mem) {
-        size_t size = allocations[mem];
+        size_t size = 0;
+        memcpy(&size, mem, sizeof(size_t));
         DEBUG_ASSERT(size > 0);
 
         currentEdge.memAllocated -= size;
 
-        allocations[mem] = 0;
         free(mem);
     }
 
@@ -118,12 +138,12 @@ extern "C" {
         out << "Spawn id " << detach_id << " (spawned: " << *has_spawned << ") - Addr: " << has_spawned
             << " - Level: " << currentLevel << "\n ";
 
-        dag.Spawn(currentEdge, (uintptr_t)has_spawned);
+        dag->Spawn(currentEdge, (uintptr_t)has_spawned);
         currentEdge = SPEdgeData();
 
         out << "-----------------------\n";
 
-        if (!aggregatingThread) // Start aggregation online.
+        if (runOnline && !aggregatingThread) // Start aggregation online.
             aggregatingThread = new std::thread{ AggregateComponentsOnline };
     }
 
@@ -134,7 +154,7 @@ extern "C" {
         const csi_id_t detach_id) {
         out << "Task exit\n";
 
-        dag.Sync(currentEdge, 0);
+        dag->Sync(currentEdge, 0);
         currentEdge = SPEdgeData();
 
         out << "-----------------------\n";
@@ -150,7 +170,7 @@ extern "C" {
         if (*has_spawned <= 0)
             return;
 
-        dag.Sync(currentEdge, (uintptr_t)has_spawned);
+        dag->Sync(currentEdge, (uintptr_t)has_spawned);
         currentEdge = SPEdgeData();
 
         out << "-----------------------\n";

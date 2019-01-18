@@ -11,11 +11,13 @@ public:
         DEBUG_ASSERT(next != nullptr);
         return next->data;
     }
+
+    virtual ~SPEdgeProducer() {}
 };
 
-class SPEdgeOnlineProducer : public SPEdgeProducer {
+class SPEdgeFullOnlineProducer : public SPEdgeProducer {
 public:
-    SPEdgeOnlineProducer(SPDAG* dag) : dag(dag) {
+    SPEdgeFullOnlineProducer(FullSPDAG* dag) : dag(dag) {
         DEBUG_ASSERT(dag != nullptr);
     }
 
@@ -77,7 +79,7 @@ private:
         dag->edges.ReturnToPool((PooledNode<SPEdge*>*)node);
     }
 
-    SPDAG* dag;
+    FullSPDAG* dag;
     size_t currentEdge = 0;
 
     volatile PooledNode<SPEdge*>* current = nullptr;

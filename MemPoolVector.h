@@ -12,9 +12,6 @@ struct PooledNode {
 
 template <typename T>
 class MemPoolVector {
-
-
-
 public:
     MemPoolVector() : MemPoolVector(1000) {
 

@@ -126,25 +126,47 @@ class SPDAG {
 public:
     SPDAG(OutputPrinter& outputPrinter) : out(outputPrinter) {}
 
-    ~SPDAG() {
+    virtual void Spawn(SPEdgeData &currentEdge, size_t regionId) = 0;
+    virtual void Sync(SPEdgeData &currentEdge, size_t regionId) = 0;
+
+    virtual SPComponent AggregateComponents(SPEdgeProducer* edgeProducer, int64_t threshold) = 0;
+
+    virtual void Print() {}
+    virtual void WriteDotFile(const std::string& filename) {}
+
+    void IncrementLevel() { currentLevel++; }
+    void DecrementLevel() { currentLevel--; }
+
+    bool IsComplete() { return isComplete; }
+
+    virtual ~SPDAG() {}
+
+protected:
+    size_t currentLevel = 0;
+
+    bool isComplete = false;
+
+    OutputPrinter& out;
+};
+
+class FullSPDAG : public SPDAG {
+public:
+    FullSPDAG(OutputPrinter& outputPrinter) : SPDAG(outputPrinter) {}
+
+    ~FullSPDAG() {
         for (auto& node : nodes)
             delete node;
 
         nodes.clear();
     }
 
+    void Print();
+    void WriteDotFile(const std::string& filename);
+
     void Spawn(SPEdgeData &currentEdge, size_t regionId);
     void Sync(SPEdgeData &currentEdge, size_t regionId);
 
     SPComponent AggregateComponents(SPEdgeProducer* edgeProducer, int64_t threshold);
-
-    bool IsComplete() { return isComplete; }
-
-    void IncrementLevel() { currentLevel++; }
-    void DecrementLevel() { currentLevel--; }
-
-    void Print();
-    void WriteDotFile(const std::string& filename);
 
 private:
     SPComponent AggregateComponentsFromNode(SPEdgeProducer* edgeProducer, SPNode* pivot, int64_t threshold);
@@ -180,13 +202,18 @@ private:
     SPNode* firstNode;
 
     bool afterSpawn = false;
-    size_t currentLevel = 0;
 
-    bool isComplete = false;
-
-    OutputPrinter& out;
-
-    friend class SPEdgeOfflineProducer;
-    friend class SPEdgeOnlineProducer;
+    friend class SPEdgeFullOnlineProducer;
     friend class SPNode;
+};
+
+class BareboneSPDAG : public SPDAG {
+public:
+    BareboneSPDAG(OutputPrinter& outputPrinter) : SPDAG(outputPrinter) {}
+
+    void Spawn(SPEdgeData &currentEdge, size_t regionId) {}
+    void Sync(SPEdgeData &currentEdge, size_t regionId) {}
+
+    SPComponent AggregateComponents(SPEdgeProducer* edgeProducer, int64_t threshold) { return SPComponent(); }
+private:
 };
