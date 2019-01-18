@@ -92,7 +92,6 @@ struct SPEdge {
     }
 };
 
-
 struct SPNode {
     size_t id;
     std::vector<SPEdge*> successors;
@@ -133,12 +132,6 @@ public:
     ~SPDAG() {
         for (auto& node : nodes)
             delete node;
-
-        for (size_t i = 0; i < edges.size(); ++i)
-        {
-            SPEdge* edge = edges[i];
-            delete edge;
-        }
 
         nodes.clear();
     }

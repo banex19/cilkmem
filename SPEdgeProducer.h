@@ -1,6 +1,6 @@
 #pragma once
 #include "SeriesParallelDAG.h"
-     
+
 
 class SPEdgeProducer {
 public:
@@ -11,29 +11,6 @@ public:
         DEBUG_ASSERT(next != nullptr);
         return next->data;
     }
-};
-
-class SPEdgeOfflineProducer : public SPEdgeProducer {
-public:
-    SPEdgeOfflineProducer(SPDAG* dag) : dag(dag) {
-        DEBUG_ASSERT(dag != nullptr);
-        DEBUG_ASSERT(dag->IsComplete());
-    }
-
-    SPEdge* Next(size_t sleep_ns = 1000000) {
-        SPEdge* next = nullptr;
-        if (dag->edges.size() > currentEdge)
-        {
-            next = dag->edges[currentEdge];
-            currentEdge++;
-        }
-
-        return next;
-    }
-
-private:
-    SPDAG* dag;
-    size_t currentEdge = 0;
 };
 
 class SPEdgeOnlineProducer : public SPEdgeProducer {
@@ -47,7 +24,11 @@ public:
         if (dag->IsComplete() && (dag->edges.size() == 0 || (current != nullptr && current->next == nullptr)))
         {
             if (current != nullptr)
+            {
                 ReturnNodeToPool(current);
+                current = nullptr;
+            }
+            
             return nullptr;
         }
 
