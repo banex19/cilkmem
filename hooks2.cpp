@@ -102,7 +102,7 @@ extern "C" {
     // Prepend the size to each allocated block so it can be retrieved
     // when calling free().
     void* __csi_interpose_malloc(size_t size) {
-        uint8_t* mem = (uint8_t*) malloc(sizeof(size_t) + size);
+        uint8_t* mem = (uint8_t*)malloc(sizeof(size_t) + size);
 
         if (size == 0) // Treat zero-allocations as non-zero for sake of testing.
             size = 1;
@@ -119,19 +119,22 @@ extern "C" {
     }
 
     void  __csi_interpose_free(void* mem) {
+        uint8_t* addr = (uint8_t*)mem;
+        addr = addr - sizeof(size_t);
+
         size_t size = 0;
-        memcpy(&size, mem, sizeof(size_t));
+        memcpy(&size, addr, sizeof(size_t));
         DEBUG_ASSERT(size > 0);
 
         currentEdge.memAllocated -= size;
 
-        free(mem);
+        free(addr);
     }
 
-    void __attribute__((noinline))  __csi_before_call(const csi_id_t call_id, const csi_id_t func_id,
+    void  __csi_before_call(const csi_id_t call_id, const csi_id_t func_id,
         const call_prop_t prop) {}
 
-    void __attribute__((noinline))  __csi_after_call(const csi_id_t call_id, const csi_id_t func_id,
+    void  __csi_after_call(const csi_id_t call_id, const csi_id_t func_id,
         const call_prop_t prop) {}
 
     void  __attribute__((noinline))  __csi_detach(const csi_id_t detach_id, const int32_t* has_spawned) {
