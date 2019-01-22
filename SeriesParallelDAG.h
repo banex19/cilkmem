@@ -5,6 +5,7 @@
 #include <cstdint>
 #include "common.h"
 #include "MemPoolVector.h"
+#include "Nullable.h"
 
 
 constexpr bool debugVerbose = false;
@@ -12,37 +13,6 @@ constexpr bool debugVerbose = false;
 struct SPNode;
 class SPEdgeProducer;
 
-template <typename T>
-class Nullable {
-public:
-    Nullable(T val) : value(val) {}
-    Nullable() : Nullable(NULL_VALUE) {}
-
-    Nullable<T> operator+(const Nullable<T>& other) const {
-        if (!HasValue() || !other.HasValue())
-            return NULL_VALUE;
-        else return Nullable<T>(value + other.value);
-    }
-
-    template <typename U>
-    friend std::ostream& operator<< (std::ostream & os, const Nullable<U>  & obj);
-
-    Nullable<T> Max(const Nullable<T>& other) const {
-        if (!HasValue())
-            return other;
-        else if (!other.HasValue())
-            return *this;
-        else return Nullable<T>(std::max(value, other.value));
-    }
-
-    bool HasValue() const { return value != NULL_VALUE; }
-    T GetValue() const { return value; }
-
-    static T NULL_VALUE;
-
-private:
-    T value;
-};
 
 
 struct SPEdgeData {
@@ -57,7 +27,7 @@ struct SPEdgeData {
 struct SPComponent {
     int64_t memTotal = 0;
     int64_t maxSingle = 0;
-    Nullable<int64_t> multiRobust = 0;
+    Nullable<int64_t> multiRobust;
 
     SPComponent() {}
 
@@ -74,6 +44,24 @@ struct SPComponent {
     int64_t GetWatermark(int64_t threshold);
 
     void Print();
+};
+
+struct SPMultispawnComponent {
+    Nullable<int64_t> multiRobustSuspendEnd;
+    Nullable<int64_t> multiRobustIgnoreEnd;
+    Nullable<int64_t> singleSuspendEnd;
+    Nullable<int64_t> singleIgnoreEnd;
+    Nullable<int64_t> robustUnfinished;
+    int64_t robustUnfinishedTail = 0;
+    int64_t runningMemTotal = 0;
+    int64_t emptyTail = 0;
+
+    void IncrementOnContinuation(const SPComponent& continuation, int64_t threshold);
+    void IncrementOnSpawn(const SPComponent& spawn, int64_t threshold);
+
+    void Print();
+
+    SPComponent ToComponent();
 };
 
 struct SPEdge {
@@ -130,6 +118,7 @@ public:
     virtual void Sync(SPEdgeData &currentEdge, size_t regionId) = 0;
 
     virtual SPComponent AggregateComponents(SPEdgeProducer* edgeProducer, int64_t threshold) = 0;
+    virtual SPComponent AggregateComponentsEfficient(SPEdgeProducer* edgeProducer, int64_t threshold) = 0;
 
     virtual void Print() {}
     virtual void WriteDotFile(const std::string& filename) {}
@@ -167,8 +156,11 @@ public:
     void Sync(SPEdgeData &currentEdge, size_t regionId);
 
     SPComponent AggregateComponents(SPEdgeProducer* edgeProducer, int64_t threshold);
+    SPComponent AggregateComponentsEfficient(SPEdgeProducer* edgeProducer, int64_t threshold);
 
 private:
+    SPComponent AggregateMultispawn(SPEdgeProducer* edgeProducer, SPEdge* incomingEdge, SPNode* pivot, int64_t threshold);
+
     SPComponent AggregateComponentsFromNode(SPEdgeProducer* edgeProducer, SPNode* pivot, int64_t threshold);
     SPComponent AggregateUntilSync(SPEdgeProducer* edgeProducer, SPEdge* start, SPNode* syncNode, int64_t threshold);
 

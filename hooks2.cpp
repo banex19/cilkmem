@@ -45,7 +45,7 @@ extern "C" {
         if (fullSPDAG)
             producer = new SPEdgeFullOnlineProducer{ static_cast<FullSPDAG*>(dag) };
 
-        SPComponent aggregated = dag->AggregateComponents(producer, threshold);
+        SPComponent aggregated = dag->AggregateComponentsEfficient(producer, threshold);
 
         aggregated.Print();
 
@@ -54,11 +54,11 @@ extern "C" {
         alwaysOut << "Memory high-water mark: " << watermark << "\n";
         if (watermark <= (memLimit / 2))
         {
-            // alwaysOut << "Program will use LESS than " << memLimit << " bytes\n";
+            alwaysOut << "Program will use LESS than " << memLimit << " bytes\n";
         }
         else
         {
-            // alwaysOut << "Program will use AT LEAST " << (memLimit / 2) << " bytes\n";
+            alwaysOut << "Program will use AT LEAST " << (memLimit / 2) << " bytes\n";
         }
 
         delete producer;

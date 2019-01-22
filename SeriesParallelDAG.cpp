@@ -171,6 +171,84 @@ SPComponent FullSPDAG::AggregateComponents(SPEdgeProducer* edgeProducer, int64_t
     return start;
 }
 
+SPComponent FullSPDAG::AggregateComponentsEfficient(SPEdgeProducer * edgeProducer, int64_t threshold) {
+    if (IsComplete() && firstNode == nullptr)
+        return SPComponent();
+
+    DEBUG_ASSERT(firstNode != nullptr);
+
+    SPEdge* start = edgeProducer->Next();
+
+    SPComponent final = AggregateMultispawn(edgeProducer, start, firstNode, threshold);
+
+    SPComponent end{ edgeProducer->NextData() };
+
+    final.CombineSeries(end);
+
+    // Make sure there are no more edges to consume.
+    DEBUG_ASSERT(edgeProducer->Next() == nullptr);
+    DEBUG_ASSERT(IsComplete());
+
+    return final;
+}
+
+
+SPComponent FullSPDAG::AggregateMultispawn(SPEdgeProducer * edgeProducer, SPEdge * incomingEdge, SPNode * pivot, int64_t threshold) {
+    SPNode* sync = pivot->associatedSyncNode;
+    DEBUG_ASSERT_EX(sync != nullptr, "[AggregateMultispawn] Node %zu has no sync node", pivot->id);
+
+    SPMultispawnComponent multispawn;
+
+    SPComponent start{ incomingEdge->data };
+    multispawn.IncrementOnContinuation(start, threshold);
+
+    bool isSpawn = true;
+    bool stop = false;
+    while (!stop)
+    {
+        SPEdge* next = edgeProducer->Next();
+
+        if (isSpawn) // We are going down a spawn sub-component of this multi-spawn component.
+        {
+            SPComponent spawn;
+
+            while (next->to != sync)
+            {
+                DEBUG_ASSERT(next->to->associatedSyncNode != sync);
+
+                spawn.CombineSeries(AggregateMultispawn(edgeProducer, next, next->to, threshold));
+                next = edgeProducer->Next();
+            }
+
+            spawn.CombineSeries(next->data);
+
+            multispawn.IncrementOnSpawn(spawn, threshold);
+            isSpawn = false;
+        }
+        else // We are following a continuation sub-component.
+        {
+            SPComponent continuation;
+
+            while (next->to != sync && next->to->associatedSyncNode != sync)
+            {
+                continuation.CombineSeries(AggregateMultispawn(edgeProducer, next, next->to, threshold));
+                next = edgeProducer->Next();
+            }
+
+            if (next->to == sync) // Are we at the last continuation strand?
+                stop = true;
+
+            continuation.CombineSeries(SPComponent(next->data));
+
+            multispawn.IncrementOnContinuation(continuation, threshold);
+            isSpawn = true;
+        }
+    }
+
+    DEBUG_ASSERT(isSpawn);
+
+    return multispawn.ToComponent();
+}
 
 SPComponent FullSPDAG::AggregateComponentsFromNode(SPEdgeProducer* edgeProducer, SPNode * pivot, int64_t threshold) {
     SPNode* sync = pivot->associatedSyncNode;

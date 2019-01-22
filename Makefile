@@ -41,7 +41,7 @@ tool.o: toolfiles
 	$(CSICLANGPP) $(CXXFLAGS) -c SPComponent.cpp -o hooks4.o
 	ld -r hooks1.o hooks2.o hooks3.o hooks4.o -o tool.o
 
-toolfiles: hooks.cpp hooks2.cpp SeriesParallelDAG.cpp SPComponent.cpp OutputPrinter.h MemPoolVector.h SeriesParallelDAG.h hooks.h common.h SPEdgeProducer.h
+toolfiles: hooks.cpp hooks2.cpp SeriesParallelDAG.cpp SPComponent.cpp OutputPrinter.h MemPoolVector.h SeriesParallelDAG.h hooks.h common.h SPEdgeProducer.h Nullable.h
 	touch toolfiles
 
 instr.o: tool.bc test.cpp csirt.bc config.txt
