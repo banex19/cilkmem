@@ -14,3 +14,4 @@
 *.pdf
 *.tmp
 perf*
+!config.txt

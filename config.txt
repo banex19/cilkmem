@@ -1,0 +1,10 @@
+# Configuration file for surgical instrumentation
+
+INTERPOSE
+malloc
+free
+#TestFunction, FunctionEntry, 
+#OtherFileFunction, FunctionExit
+#TestFunction
+#OtherFileFunction
+#main, FunctionExit
