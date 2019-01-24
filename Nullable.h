@@ -10,7 +10,7 @@ public:
 
     Nullable<T> operator+(const Nullable<T>& other) const {
         if (!HasValue() || !other.HasValue())
-            return GetNullValue();
+            return Nullable<T>();
         else return Nullable<T>(value + other.value);
     }
     Nullable<T> operator+(const T& other) const {

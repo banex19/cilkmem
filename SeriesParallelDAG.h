@@ -35,7 +35,6 @@ struct SPComponent {
     SPComponent(const SPEdgeData& edge) {
         memTotal = edge.memAllocated;
         maxSingle = edge.maxMemAllocated;
-        multiRobust = 0;
     }
 
     void CombineSeries(const SPComponent& other);

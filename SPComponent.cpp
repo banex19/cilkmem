@@ -37,7 +37,16 @@ void SPComponent::CombineSeries(const SPComponent & other) {
     SPComponent old = *this;
     memTotal = old.memTotal + other.memTotal;
     maxSingle = std::max(old.maxSingle, old.memTotal + other.maxSingle);
+
+    bool wasNull = !multiRobust.HasValue();
+
     multiRobust = NullMax(old.multiRobust, other.multiRobust + old.memTotal);
+
+
+    if (wasNull && multiRobust.HasValue())
+    {
+        std::cout << "Multirobust became non-null\n";
+    }
 }
 
 void SPComponent::CombineParallel(const SPComponent & other, int64_t threshold) {
@@ -48,10 +57,17 @@ void SPComponent::CombineParallel(const SPComponent & other, int64_t threshold) 
     NullableT c1MaxSingleBar = old.maxSingle > threshold ? old.maxSingle : NullableT();
     NullableT c2MaxSingleBar = other.maxSingle > threshold ? other.maxSingle : NullableT();
 
+    bool wasNull = !multiRobust.HasValue();
+
     multiRobust = NullMax(
         c1MaxSingleBar + c2MaxSingleBar,
         NullMax(c1MaxSingleBar, old.multiRobust, NullableT(old.memTotal), NullableT(0)) + other.multiRobust,
         NullMax(c2MaxSingleBar, other.multiRobust, NullableT(other.memTotal), NullableT(0)) + old.multiRobust);
+
+    if (wasNull && multiRobust.HasValue())
+    {
+        std::cout << "Multirobust became non-null\n";
+    }
 }
 
 int64_t SPComponent::GetWatermark(int64_t threshold) {
