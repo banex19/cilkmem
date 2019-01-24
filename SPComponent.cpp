@@ -129,7 +129,7 @@ void SPMultispawnComponent::IncrementOnSpawn(const SPComponent & spawn, int64_t 
     }
 
     int64_t m = 0;
-    if (nullableM.HasValue)
+    if (nullableM.HasValue())
         m = nullableM.GetValue();
 
     int64_t t = spawn.memTotal;
