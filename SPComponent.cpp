@@ -34,26 +34,31 @@ using NullableT = Nullable<int64_t>;
 
 /* SP component functions */
 void SPComponent::CombineSeries(const SPComponent & other) {
-    memTotal = memTotal + other.memTotal;
-    maxSingle = std::max(maxSingle, memTotal + other.maxSingle);
-    multiRobust = NullMax(multiRobust, other.multiRobust + memTotal);
+    SPComponent old = *this;
+    memTotal = old.memTotal + other.memTotal;
+    maxSingle = std::max(old.maxSingle, old.memTotal + other.maxSingle);
+    multiRobust = NullMax(old.multiRobust, other.multiRobust + old.memTotal);
 }
 
 void SPComponent::CombineParallel(const SPComponent & other, int64_t threshold) {
-    memTotal = memTotal + other.memTotal;
-    maxSingle = std::max(maxSingle + std::max((int64_t)0, other.memTotal), other.maxSingle + std::max((int64_t)0, memTotal));
+    SPComponent old = *this;
+    memTotal = old.memTotal + other.memTotal;
+    maxSingle = std::max(old.maxSingle + std::max((int64_t)0, other.memTotal), other.maxSingle + std::max((int64_t)0, old.memTotal));
 
-    NullableT c1MaxSingleBar = maxSingle > threshold ? maxSingle : NullableT();
+    NullableT c1MaxSingleBar = old.maxSingle > threshold ? old.maxSingle : NullableT();
     NullableT c2MaxSingleBar = other.maxSingle > threshold ? other.maxSingle : NullableT();
 
     multiRobust = NullMax(
         c1MaxSingleBar + c2MaxSingleBar,
-        NullMax(c1MaxSingleBar, multiRobust, NullableT(memTotal), NullableT(0)) + other.multiRobust,
-        NullMax(c2MaxSingleBar, other.multiRobust, NullableT(other.memTotal), NullableT(0)) + multiRobust);
+        NullMax(c1MaxSingleBar, old.multiRobust, NullableT(old.memTotal), NullableT(0)) + other.multiRobust,
+        NullMax(c2MaxSingleBar, other.multiRobust, NullableT(other.memTotal), NullableT(0)) + old.multiRobust);
 }
 
 int64_t SPComponent::GetWatermark(int64_t threshold) {
-    auto nullableWatermark = NullMax(maxSingle > threshold ? NullableT(maxSingle) : NullableT(), multiRobust, NullableT(0));
+    auto nullableWatermark = NullMax(
+        maxSingle > threshold ? NullableT(maxSingle) : NullableT(),
+        multiRobust,
+        NullableT(0));
     DEBUG_ASSERT(nullableWatermark.HasValue());
 
     return nullableWatermark.GetValue();
@@ -75,7 +80,7 @@ void SPMultispawnComponent::IncrementOnContinuation(const SPComponent & continua
     runningMemTotal = old.runningMemTotal + continuation.memTotal;
     emptyTail = old.emptyTail + continuation.memTotal;
 
-    if (old.robustUnfinishedTail + continuation.maxSingle > threshold && old.robustUnfinished.HasValue())
+    if ((old.robustUnfinishedTail + continuation.maxSingle) > threshold && old.robustUnfinished.HasValue())
     {
         multiRobustIgnoreEnd = NullMax(multiRobustIgnoreEnd, old.robustUnfinished + old.robustUnfinishedTail + continuation.maxSingle);
     }

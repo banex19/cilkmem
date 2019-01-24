@@ -3,9 +3,9 @@
 #include <thread>
 
 
-const bool fullSPDAG = false;
+const bool fullSPDAG = true;
 const bool runOnline = false;
-const bool runEfficient = false;
+const bool runEfficient = true;
 
 OutputPrinter out{ std::cout };
 OutputPrinter alwaysOut{ std::cout };
