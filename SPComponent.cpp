@@ -122,11 +122,15 @@ void SPMultispawnComponent::IncrementOnSpawn(const SPComponent & spawn, int64_t 
     multiRobustSuspendEnd = NullMax(temp, old.multiRobustSuspendEnd);
     multiRobustIgnoreEnd = NullMax(temp, old.multiRobustIgnoreEnd);
 
-    NullableT m = spawn.multiRobust;
+    NullableT nullableM = spawn.multiRobust;
     if (spawn.maxSingle > threshold)
     {
-        temp = NullMax(temp, NullableT(spawn.maxSingle));
+        nullableM = NullMax(nullableM, NullableT(spawn.maxSingle));
     }
+
+    int64_t m = 0;
+    if (nullableM.HasValue)
+        m = nullableM.GetValue();
 
     int64_t t = spawn.memTotal;
     if (t > 0 && m <= (t + threshold))
