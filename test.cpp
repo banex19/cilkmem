@@ -20,6 +20,9 @@ void testFree(void* mem) {
 }
 
 __attribute__((noinline)) int testSpawn(int x) {
+    if (x == 0)
+        return 1;
+
     void* y = cilk_spawn testAlloc((size_t)x);
 
     int k = printf("Testing subspawn\n");
@@ -58,7 +61,7 @@ __attribute__((noinline)) uint64_t fib(uint64_t n) {
 }
 
 __attribute__((noinline)) uint64_t rec(uint64_t n) {
-    std::cout << "rec(" << n << ")\n";
+  //  std::cout << "rec(" << n << ")\n";
     if (n < 2)
     {
         return n;
@@ -76,16 +79,21 @@ __attribute__((noinline)) uint64_t rec(uint64_t n) {
 
     mem = malloc(100);
 
-    std::cout << "Finished rec(" << n << ")\n";
+ //   std::cout << "Finished rec(" << n << ")\n";
     return x + y;
 }
 
 
 int main(int argc, char** argv) {
     uint64_t n = 30;
+    uint64_t k = 1;
     if (argc > 1)
     {
         n = std::atoi(argv[1]);
+    }
+    if (argc > 2)
+    {
+        k = std::atoi(argv[2]);
     }
     //  uint64_t x = fib(3);
 
@@ -104,8 +112,8 @@ int main(int argc, char** argv) {
          mem = cilk_spawn testAlloc(10);
      } */
 
-    cilk_for(size_t i = 0; i < 1; ++i) {
-        uint64_t x = fib(n);
+    cilk_for(size_t i = 0; i < k; ++i) {
+        uint64_t x = rec(n);
     }
 
 

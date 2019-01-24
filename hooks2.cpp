@@ -4,7 +4,7 @@
 
 
 const bool fullSPDAG = false;
-const bool runOnline = true;
+const bool runOnline = false;
 const bool runEfficient = false;
 
 OutputPrinter out{ std::cout };
@@ -105,7 +105,7 @@ extern "C" {
         // Print out the Series Parallel dag.
         // dag->Print();
 
-        // dag->WriteDotFile("sp.dot");
+         dag->WriteDotFile("sp.dot");
 
         if (!aggregatingThread) // Start aggregation if it wasn't being done online.
             aggregatingThread = new std::thread{ AggregateComponentsOnline };

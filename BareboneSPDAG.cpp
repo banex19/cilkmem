@@ -74,7 +74,7 @@ SPComponent BareboneSPDAG::AggregateComponents(SPEdgeProducer * edgeProducer, SP
 
     // Make sure there are no more edges to consume.
     SPBareboneEdge* next = edgeProducer->NextBarebone();
-    DEBUG_ASSERT(next == nullptr);
+    DEBUG_ASSERT_EX(next == nullptr, "There are still edges left with value %zu", next->data.memAllocated);
     DEBUG_ASSERT(!eventProducer->HasNext());
     DEBUG_ASSERT(IsComplete());
 
@@ -84,6 +84,8 @@ SPComponent BareboneSPDAG::AggregateComponents(SPEdgeProducer * edgeProducer, SP
 }
 
 SPComponent BareboneSPDAG::AggregateComponentsSpawn(SPEdgeProducer * edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold) {
+
+    out << "Aggregating from spawn\n";
 
     SPComponent spawnPath = AggregateUntilSync(edgeProducer, eventProducer, false, threshold);
 
@@ -95,22 +97,30 @@ SPComponent BareboneSPDAG::AggregateComponentsSpawn(SPEdgeProducer * edgeProduce
 }
 
 SPComponent BareboneSPDAG::AggregateUntilSync(SPEdgeProducer * edgeProducer, SPEventBareboneOnlineProducer * eventProducer, bool continuation, int64_t threshold) {
-    SPComponent path{ edgeProducer->NextData() };
+    out << "Aggregating until sync (continuation: " << continuation << ") - ";
+
+    SPComponent path;
     SPEvent event = eventProducer->Next();
 
     if (!event.spawn) // Single-edge sub-component.
     {
+        path = SPComponent(edgeProducer->NextData());
+        out << "Only one component\n";
         return path;
     }
+
+    out << "With subcomponents\n";
 
     bool delegatedContinuation = false;
     while (!delegatedContinuation && event.spawn)
     {
-        path.CombineSeries(AggregateComponentsSpawn(edgeProducer, eventProducer, threshold));
+        path.CombineSeries(SPComponent(edgeProducer->NextData())); // Combine in series with the edge going to the spawn.
+
+        path.CombineSeries(AggregateComponentsSpawn(edgeProducer, eventProducer, threshold)); // Combine in series with the spawn.
 
         if (!event.newSync) // This is a multispawn sub-component, therefore it will sync for us.
         {
-            DEBUG_ASSERT(!continuation);
+            DEBUG_ASSERT(continuation);
             delegatedContinuation = true;
         }
 
@@ -125,6 +135,8 @@ SPComponent BareboneSPDAG::AggregateUntilSync(SPEdgeProducer * edgeProducer, SPE
         DEBUG_ASSERT(!event.spawn);
         path.CombineSeries(edgeProducer->NextData());
     }
+
+    out << "Finished aggregating (continuation: " << continuation << ")\n";
 
     return path;
 }

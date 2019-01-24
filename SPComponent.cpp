@@ -36,7 +36,7 @@ using NullableT = Nullable<int64_t>;
 void SPComponent::CombineSeries(const SPComponent & other) {
     memTotal = memTotal + other.memTotal;
     maxSingle = std::max(maxSingle, memTotal + other.maxSingle);
-    multiRobust = NullMax(multiRobust, memTotal + other.multiRobust);
+    multiRobust = NullMax(multiRobust, other.multiRobust + memTotal);
 }
 
 void SPComponent::CombineParallel(const SPComponent & other, int64_t threshold) {

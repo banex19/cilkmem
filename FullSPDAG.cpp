@@ -198,6 +198,8 @@ SPComponent FullSPDAG::AggregateMultispawn(SPEdgeProducer * edgeProducer, SPEdge
     SPNode* sync = pivot->associatedSyncNode;
     DEBUG_ASSERT_EX(sync != nullptr, "[AggregateMultispawn] Node %zu has no sync node", pivot->id);
 
+    out << "Aggregating multispawn from node " << pivot->id << "\n";
+
     SPMultispawnComponent multispawn;
 
     SPComponent start{ incomingEdge->data };
@@ -217,6 +219,7 @@ SPComponent FullSPDAG::AggregateMultispawn(SPEdgeProducer * edgeProducer, SPEdge
             {
                 DEBUG_ASSERT(next->to->associatedSyncNode != sync);
 
+                out << "Found multispawn starting from node " << next->to->id << "\n";
                 spawn.CombineSeries(AggregateMultispawn(edgeProducer, next, next->to, threshold));
                 next = edgeProducer->Next();
             }
@@ -232,12 +235,16 @@ SPComponent FullSPDAG::AggregateMultispawn(SPEdgeProducer * edgeProducer, SPEdge
 
             while (next->to != sync && next->to->associatedSyncNode != sync)
             {
+                out << "Found multispawn starting from node " << next->to->id << "\n";
                 continuation.CombineSeries(AggregateMultispawn(edgeProducer, next, next->to, threshold));
                 next = edgeProducer->Next();
             }
 
             if (next->to == sync) // Are we at the last continuation strand?
+            {
+                out << "Edge from " << next->from->id << " to " << next->to->id << " is the last continuation\n";
                 stop = true;
+            }
 
             continuation.CombineSeries(SPComponent(next->data));
 
@@ -247,6 +254,10 @@ SPComponent FullSPDAG::AggregateMultispawn(SPEdgeProducer * edgeProducer, SPEdge
     }
 
     DEBUG_ASSERT(isSpawn);
+
+    out << "Multispawn from node " << pivot->id << ": ";
+    //multispawn.ToComponent().Print();
+
 
     return multispawn.ToComponent();
 }
@@ -260,15 +271,21 @@ SPComponent FullSPDAG::AggregateComponentsFromNode(SPEdgeProducer* edgeProducer,
     SPEdge* next = edgeProducer->Next();
     SPComponent spawnPath = AggregateUntilSync(edgeProducer, next, sync, threshold);
 
+    out << "Finished subcomponent (spawn) from id " << pivot->id << " to id " << sync->id << "\n";
+
     next = edgeProducer->Next();
     SPComponent continuation = AggregateUntilSync(edgeProducer, next, sync, threshold);
 
     spawnPath.CombineParallel(continuation, threshold);
 
+    out << "Finished subcomponent (continuation) from id " << pivot->id << " to id " << sync->id << "\n";
+
     return spawnPath;
 }
 
 SPComponent FullSPDAG::AggregateUntilSync(SPEdgeProducer* edgeProducer, SPEdge * start, SPNode * syncNode, int64_t threshold) {
+    size_t startId = start->from->id;
+
     SPComponent subComponent{ start->data };
 
     SPEdge* currentEdge = start;
@@ -276,17 +293,29 @@ SPComponent FullSPDAG::AggregateUntilSync(SPEdgeProducer* edgeProducer, SPEdge *
     while (currentEdge->to != syncNode)
     {
         SPNode* toNode = currentEdge->to;
+        SPNode* associatedSyncNode = toNode->associatedSyncNode;
 
         DEBUG_ASSERT_EX(currentEdge->to->associatedSyncNode != nullptr, "[AggregateUntilSync] Node %zu has no sync node", toNode->id);
 
         // There's another spawn in this path. Resolve that sub-component first.
+        out << "Found spawn from node " << toNode->id << "\n";
         subComponent.CombineSeries(AggregateComponentsFromNode(edgeProducer, toNode, threshold));
 
         // The spawn has returned, continue from the only edge coming out of that 
-        // spawn's associated sync node.
-        currentEdge = edgeProducer->Next();
-        subComponent.CombineSeries(SPComponent(currentEdge->data));
+        // spawn's associated sync node. Don't do anything if the sub-spawn shared the same sync.
+        // This can happen in a multispawn component.
+        if (associatedSyncNode != syncNode)
+        {
+            currentEdge = edgeProducer->Next();
+            subComponent.CombineSeries(SPComponent(currentEdge->data));
+        }
+        else
+        {
+            break;
+        }
     }
+
+    out << "Aggregated from " << startId << " to " << syncNode->id << "\n";
 
     return subComponent;
 }
