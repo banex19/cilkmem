@@ -12,6 +12,7 @@ constexpr bool debugVerbose = false;
 
 struct SPNode;
 class SPEdgeProducer;
+class SPEventBareboneOnlineProducer;
 
 
 
@@ -64,11 +65,14 @@ struct SPMultispawnComponent {
     SPComponent ToComponent();
 };
 
-struct SPEdge {
+struct SPBareboneEdge {
+    SPEdgeData data;
+};
+
+struct SPEdge : public SPBareboneEdge {
     size_t id;
     SPNode* from;
     SPNode* to;
-    SPEdgeData data;
     bool forward;
     bool spawn;
 
@@ -78,6 +82,8 @@ struct SPEdge {
         ;
     }
 };
+
+
 
 struct SPNode {
     size_t id;
@@ -110,15 +116,30 @@ struct SPLevel {
     }
 };
 
+struct SPBareboneLevel {
+    size_t regionId;
+    size_t level;
+    size_t remaining;
+
+    SPBareboneLevel(size_t region, size_t level, size_t remaining) : regionId(region), level(level), remaining(remaining) {}
+};
+
+struct SPEvent {
+    uint8_t spawn : 1;
+    uint8_t newSync : 1;
+};
+
 class SPDAG {
 public:
     SPDAG(OutputPrinter& outputPrinter) : out(outputPrinter) {}
 
+    virtual ~SPDAG() {}
+
     virtual void Spawn(SPEdgeData &currentEdge, size_t regionId) = 0;
     virtual void Sync(SPEdgeData &currentEdge, size_t regionId) = 0;
 
-    virtual SPComponent AggregateComponents(SPEdgeProducer* edgeProducer, int64_t threshold) = 0;
-    virtual SPComponent AggregateComponentsEfficient(SPEdgeProducer* edgeProducer, int64_t threshold) = 0;
+    virtual SPComponent AggregateComponents(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold) = 0;
+    virtual SPComponent AggregateComponentsEfficient(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold) = 0;
 
     virtual void Print() {}
     virtual void WriteDotFile(const std::string& filename) {}
@@ -128,12 +149,10 @@ public:
 
     bool IsComplete() { return isComplete; }
 
-    virtual ~SPDAG() {}
-
 protected:
     size_t currentLevel = 0;
 
-    bool isComplete = false;
+    volatile bool isComplete = false;
 
     OutputPrinter& out;
 };
@@ -155,8 +174,8 @@ public:
     void Spawn(SPEdgeData &currentEdge, size_t regionId);
     void Sync(SPEdgeData &currentEdge, size_t regionId);
 
-    SPComponent AggregateComponents(SPEdgeProducer* edgeProducer, int64_t threshold);
-    SPComponent AggregateComponentsEfficient(SPEdgeProducer* edgeProducer, int64_t threshold);
+    SPComponent AggregateComponents(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold);
+    SPComponent AggregateComponentsEfficient(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold);
 
 private:
     SPComponent AggregateMultispawn(SPEdgeProducer* edgeProducer, SPEdge* incomingEdge, SPNode* pivot, int64_t threshold);
@@ -203,9 +222,26 @@ class BareboneSPDAG : public SPDAG {
 public:
     BareboneSPDAG(OutputPrinter& outputPrinter) : SPDAG(outputPrinter) {}
 
-    void Spawn(SPEdgeData &currentEdge, size_t regionId) {}
-    void Sync(SPEdgeData &currentEdge, size_t regionId) {}
+    void Spawn(SPEdgeData &currentEdge, size_t regionId);
+    void Sync(SPEdgeData &currentEdge, size_t regionId);
 
-    SPComponent AggregateComponents(SPEdgeProducer* edgeProducer, int64_t threshold) { return SPComponent(); }
+    SPComponent AggregateComponents(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold);
+    SPComponent AggregateComponentsEfficient(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold) {return SPComponent(); }
 private:
+    SPComponent AggregateComponentsSpawn(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold);
+    SPComponent AggregateUntilSync(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, bool continuation, int64_t threshold);
+    
+    SPBareboneEdge* AddEdge(const SPEdgeData& data) { SPBareboneEdge* edge = new SPBareboneEdge(); edge->data = data; return edge; }
+
+    std::vector<SPBareboneLevel> stack;
+
+    MemPoolVector<SPEvent> events;
+    MemPoolVector<SPBareboneEdge*> edges;
+
+    bool afterSpawn = false;
+
+
+    friend class SPEdgeBareboneOnlineProducer;
+    friend class SPEventBareboneOnlineProducer;
+
 };

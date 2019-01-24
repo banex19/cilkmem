@@ -30,18 +30,20 @@ normal: test.cpp
 tool.bc: toolfiles
 	$(CSICLANGPP) -O3 -S -emit-llvm hooks.cpp -o tool1.bc
 	$(CSICLANGPP) -O3 -S -emit-llvm hooks2.cpp -o tool2.bc
-	$(CSICLANGPP) -O3 -S -emit-llvm SeriesParallelDAG.cpp -o tool3.bc
+	$(CSICLANGPP) -O3 -S -emit-llvm FullSPDAG.cpp -o tool3.bc
 	$(CSICLANGPP) -O3 -S -emit-llvm SPComponent.cpp -o tool4.bc
-	$(LLVMLINK) tool1.bc tool2.bc tool3.bc tool4.bc -o tool.bc
+	$(CSICLANGPP) -O3 -S -emit-llvm BareboneSPDAG.cpp -o tool5.bc
+	$(LLVMLINK) tool1.bc tool2.bc tool3.bc tool4.bc tool5.bc -o tool.bc
 
 tool.o: toolfiles
 	$(CSICLANGPP) $(CXXFLAGS) -c hooks.cpp -o hooks1.o
 	$(CSICLANGPP) $(CXXFLAGS) -c hooks2.cpp -o hooks2.o
-	$(CSICLANGPP) $(CXXFLAGS) -c SeriesParallelDAG.cpp -o hooks3.o
+	$(CSICLANGPP) $(CXXFLAGS) -c FullSPDAG.cpp -o hooks3.o
 	$(CSICLANGPP) $(CXXFLAGS) -c SPComponent.cpp -o hooks4.o
-	ld -r hooks1.o hooks2.o hooks3.o hooks4.o -o tool.o
+	$(CSICLANGPP) $(CXXFLAGS) -c BareboneSPDAG.cpp -o hooks5.o
+	ld -r hooks1.o hooks2.o hooks3.o hooks4.o hooks5.o -o tool.o
 
-toolfiles: hooks.cpp hooks2.cpp SeriesParallelDAG.cpp SPComponent.cpp OutputPrinter.h MemPoolVector.h SeriesParallelDAG.h hooks.h common.h SPEdgeProducer.h Nullable.h
+toolfiles: hooks.cpp hooks2.cpp FullSPDAG.cpp BareboneSPDAG.cpp SPComponent.cpp OutputPrinter.h MemPoolVector.h SeriesParallelDAG.h hooks.h common.h SPEdgeProducer.h Nullable.h
 	touch toolfiles
 
 instr.o: tool.bc test.cpp csirt.bc config.txt

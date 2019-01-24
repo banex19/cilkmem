@@ -3,8 +3,9 @@
 #include <thread>
 
 
-const bool fullSPDAG = true;
+const bool fullSPDAG = false;
 const bool runOnline = true;
+const bool runEfficient = false;
 
 OutputPrinter out{ std::cout };
 OutputPrinter alwaysOut{ std::cout };
@@ -41,27 +42,42 @@ extern "C" {
         int64_t threshold = memLimit / (2 * p);
 
         SPEdgeProducer* producer = nullptr;
+        SPEventBareboneOnlineProducer* eventProducer = nullptr;
+
 
         if (fullSPDAG)
             producer = new SPEdgeFullOnlineProducer{ static_cast<FullSPDAG*>(dag) };
+        else
+        {
+            producer = new SPEdgeBareboneOnlineProducer{ static_cast<BareboneSPDAG*>(dag) };
+            eventProducer = new SPEventBareboneOnlineProducer{ static_cast<BareboneSPDAG*>(dag) };
+        }
 
-        SPComponent aggregated = dag->AggregateComponentsEfficient(producer, threshold);
-
-        aggregated.Print();
+        SPComponent aggregated;
+        if (runEfficient)
+            aggregated = dag->AggregateComponentsEfficient(producer, eventProducer, threshold);
+        else
+            aggregated = dag->AggregateComponents(producer, eventProducer, threshold);
 
         int64_t watermark = aggregated.GetWatermark(threshold);
 
-        alwaysOut << "Memory high-water mark: " << watermark << "\n";
-        if (watermark <= (memLimit / 2))
+        if (watermark != 0)
         {
-            alwaysOut << "Program will use LESS than " << memLimit << " bytes\n";
-        }
-        else
-        {
-            alwaysOut << "Program will use AT LEAST " << (memLimit / 2) << " bytes\n";
+            aggregated.Print();
+
+            alwaysOut << "Memory high-water mark: " << watermark << "\n";
+            if (watermark <= (memLimit / 2))
+            {
+                alwaysOut << "Program will use LESS than " << memLimit << " bytes\n";
+            }
+            else
+            {
+                alwaysOut << "Program will use AT LEAST " << (memLimit / 2) << " bytes\n";
+            }
         }
 
         delete producer;
+        delete eventProducer;
     }
 
     void program_start() {
@@ -70,14 +86,10 @@ extern "C" {
             if (fullSPDAG)
                 dag = new FullSPDAG(out);
             else
-            {
-                alwaysOut << "ERROR: Barebone SPDAG not supported yet\n";
-                exit(-1);
-            }
+                dag = new BareboneSPDAG(out);
         }
 
-        if (!debugVerbose)
-            out.DisablePrinting();
+        out.SetActive(debugVerbose);
     }
 
     void program_exit() {
@@ -86,17 +98,21 @@ extern "C" {
         // dag->WriteDotFile("sp.dot");
 
         // Simulate a final sync.
-        dag->Sync(currentEdge, false);
+        dag->Sync(currentEdge, 0);
+
+        DEBUG_ASSERT(dag->IsComplete());
 
         // Print out the Series Parallel dag.
         // dag->Print();
 
         // dag->WriteDotFile("sp.dot");
 
-        // if (!aggregatingThread) // Start aggregation if it wasn't being done online.
-        //   aggregatingThread = new std::thread{ AggregateComponentsOnline };
+        if (!aggregatingThread) // Start aggregation if it wasn't being done online.
+            aggregatingThread = new std::thread{ AggregateComponentsOnline };
 
         aggregatingThread->join();
+
+        delete dag;
     }
 
     // Prepend the size to each allocated block so it can be retrieved

@@ -32,6 +32,7 @@ Nullable<T> NullMax(const Nullable<T>& a, const Nullable<T> &b, const Nullable<T
 
 using NullableT = Nullable<int64_t>;
 
+/* SP component functions */
 void SPComponent::CombineSeries(const SPComponent & other) {
     memTotal = memTotal + other.memTotal;
     maxSingle = std::max(maxSingle, memTotal + other.maxSingle);
@@ -62,6 +63,7 @@ void SPComponent::Print() {
     std::cout << "Component - memTotal: " << memTotal << ", maxSingle: " << maxSingle << ", multiRobust: " << multiRobust << "\n";
 }
 
+/* Multispawn component functions */
 void SPMultispawnComponent::IncrementOnContinuation(const SPComponent & continuation, int64_t threshold) {
     SPMultispawnComponent old = *this; // Make a copy of the current state.
 
@@ -152,6 +154,8 @@ SPComponent SPMultispawnComponent::ToComponent() {
 
 
 void SPMultispawnComponent::Print() {
-    std::cout << "Multispawn - runningMemTotal: " << runningMemTotal << ", singleSuspendEnd: " << singleSuspendEnd << ", singleIgnoreEnd: " << singleIgnoreEnd << ", multiRobustSuspendEnd: " << multiRobustSuspendEnd <<
+    std::cout << "Multispawn - runningMemTotal: " << runningMemTotal <<
+        ", singleSuspendEnd: " << singleSuspendEnd << ", singleIgnoreEnd: " <<
+        singleIgnoreEnd << ", multiRobustSuspendEnd: " << multiRobustSuspendEnd <<
         ", multiRobustIgnoreEnd: " << multiRobustIgnoreEnd << "\n";
 }

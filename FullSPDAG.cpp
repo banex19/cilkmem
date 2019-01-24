@@ -149,10 +149,9 @@ void FullSPDAG::Sync(SPEdgeData & currentEdge, size_t regionId) {
     afterSpawn = false;
 }
 
-SPComponent FullSPDAG::AggregateComponents(SPEdgeProducer* edgeProducer, int64_t threshold) {
+SPComponent FullSPDAG::AggregateComponents(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold) {
     if (IsComplete() && firstNode == nullptr)
         return SPComponent();
-
 
     DEBUG_ASSERT(firstNode != nullptr);
 
@@ -165,13 +164,14 @@ SPComponent FullSPDAG::AggregateComponents(SPEdgeProducer* edgeProducer, int64_t
     start.CombineSeries(end);
 
     // Make sure there are no more edges to consume.
-    DEBUG_ASSERT(edgeProducer->Next() == nullptr);
+    SPEdge* next = edgeProducer->Next();
+    DEBUG_ASSERT(next == nullptr);
     DEBUG_ASSERT(IsComplete());
 
     return start;
 }
 
-SPComponent FullSPDAG::AggregateComponentsEfficient(SPEdgeProducer * edgeProducer, int64_t threshold) {
+SPComponent FullSPDAG::AggregateComponentsEfficient(SPEdgeProducer * edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold) {
     if (IsComplete() && firstNode == nullptr)
         return SPComponent();
 
@@ -186,7 +186,8 @@ SPComponent FullSPDAG::AggregateComponentsEfficient(SPEdgeProducer * edgeProduce
     final.CombineSeries(end);
 
     // Make sure there are no more edges to consume.
-    DEBUG_ASSERT(edgeProducer->Next() == nullptr);
+    SPEdge* next = edgeProducer->Next();
+    DEBUG_ASSERT(next == nullptr);
     DEBUG_ASSERT(IsComplete());
 
     return final;

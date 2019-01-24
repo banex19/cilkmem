@@ -6,12 +6,7 @@ class OutputPrinter {
 public:
     OutputPrinter(std::ostream& outputStream) : stream(outputStream) {}
 
-    void DisablePrinting() {
-        active = false;
-    }
-    void EnablePrinting() {
-        active = true;
-    }
+    void SetActive(bool enabled) { active = enabled; }
 
     template<typename T>
     const OutputPrinter& operator<<(const T& v) const { if (active) stream << v; return *this; }
