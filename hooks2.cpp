@@ -61,20 +61,18 @@ extern "C" {
 
         int64_t watermark = aggregated.GetWatermark(threshold);
 
-        if (watermark != 0)
-        {
-            aggregated.Print();
+        aggregated.Print();
 
-            alwaysOut << "Memory high-water mark: " << watermark << "\n";
-            if (watermark <= (memLimit / 2))
-            {
-                alwaysOut << "Program will use LESS than " << memLimit << " bytes\n";
-            }
-            else
-            {
-                alwaysOut << "Program will use AT LEAST " << (memLimit / 2) << " bytes\n";
-            }
+        alwaysOut << "Memory high-water mark: " << watermark << "\n";
+        if (watermark <= (memLimit / 2))
+        {
+            alwaysOut << "Program will use LESS than " << memLimit << " bytes\n";
         }
+        else
+        {
+            alwaysOut << "Program will use AT LEAST " << (memLimit / 2) << " bytes\n";
+        }
+
 
         delete producer;
         delete eventProducer;
@@ -105,7 +103,7 @@ extern "C" {
         // Print out the Series Parallel dag.
         // dag->Print();
 
-         dag->WriteDotFile("sp.dot");
+        dag->WriteDotFile("sp.dot");
 
         if (!aggregatingThread) // Start aggregation if it wasn't being done online.
             aggregatingThread = new std::thread{ AggregateComponentsOnline };
@@ -166,8 +164,7 @@ extern "C" {
             aggregatingThread = new std::thread{ AggregateComponentsOnline };
     }
 
-    void __csi_task(const csi_id_t task_id, const csi_id_t detach_id,
-        void *sp) {}
+    void __csi_task(const csi_id_t task_id, const csi_id_t detach_id) {}
 
     void __csi_task_exit(const csi_id_t task_exit_id, const csi_id_t task_id,
         const csi_id_t detach_id) {
@@ -182,7 +179,9 @@ extern "C" {
     void __csi_detach_continue(const csi_id_t detach_continue_id,
         const csi_id_t detach_id) {}
 
-    void  __attribute__((noinline))  __csi_sync(const csi_id_t sync_id, const int32_t* has_spawned) {
+    void __csi_before_sync(const csi_id_t sync_id, const int32_t* has_spawned) {}
+
+    void  __attribute__((noinline))  __csi_after_sync(const csi_id_t sync_id, const int32_t* has_spawned) {
         out << "Sync id " << sync_id << " (spawned: " << *has_spawned << ") - Addr: " << has_spawned
             << " - Level: " << currentLevel << "\n ";
 
