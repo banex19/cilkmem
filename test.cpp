@@ -113,7 +113,7 @@ int main(int argc, char** argv) {
      } */
 
     cilk_for(size_t i = 0; i < k; ++i) {
-        uint64_t x = rec(n);
+        uint64_t x = fib(n);
     }
 
 

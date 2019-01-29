@@ -238,6 +238,7 @@ private:
     MemPoolVector<SPBareboneEdge*> edges;
 
     bool afterSpawn = false;
+    bool spawnedAtLeastOnce = false;
 
 
     friend class SPEdgeBareboneOnlineProducer;

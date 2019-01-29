@@ -81,7 +81,10 @@ void FullSPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId) {
 
 void FullSPDAG::Sync(SPEdgeData & currentEdge, size_t regionId) {
     if (nodes.size() == 0)
+    {
+        isComplete = true;
         return;
+    }
 
     SPLevel* parentLevel = GetParentLevel();
     DEBUG_ASSERT(parentLevel != nullptr);

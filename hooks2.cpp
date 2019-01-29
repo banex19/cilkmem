@@ -5,30 +5,12 @@
 
 const bool fullSPDAG = true;
 const bool runOnline = false;
-const bool runEfficient = true;
+const bool runEfficient = false;
 
 OutputPrinter out{ std::cout };
 OutputPrinter alwaysOut{ std::cout };
 SPDAG* dag = nullptr;
 SPEdgeData currentEdge;
-
-inline std::string demangle(const char* name) {
-    int status = -1;
-
-    std::unique_ptr<char, void(*)(void*)> res{ abi::__cxa_demangle(name, NULL, NULL, &status), std::free };
-    if (status != 0)
-        return name;
-
-    std::string demangled = res.get();
-
-    if (demangled.find_first_of(' ') < demangled.find_first_of('('))
-        demangled = demangled.substr(demangled.find_first_of(' '));
-
-    if (demangled.find_first_of('<') < demangled.find_first_of('('))
-        return demangled.substr(0, demangled.find_first_of('<'));
-    else
-        return demangled.substr(0, demangled.find_first_of('('));
-}
 
 extern size_t currentLevel;
 
@@ -93,8 +75,6 @@ extern "C" {
     void program_exit() {
         out << "Exiting program\n";
 
-        // dag->WriteDotFile("sp.dot");
-
         // Simulate a final sync.
         dag->Sync(currentEdge, 0);
 
@@ -103,7 +83,8 @@ extern "C" {
         // Print out the Series Parallel dag.
         // dag->Print();
 
-        dag->WriteDotFile("sp.dot");
+        if (!runOnline)
+            dag->WriteDotFile("sp.dot");
 
         if (!aggregatingThread) // Start aggregation if it wasn't being done online.
             aggregatingThread = new std::thread{ AggregateComponentsOnline };

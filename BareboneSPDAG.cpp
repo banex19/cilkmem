@@ -22,9 +22,16 @@ void BareboneSPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId) {
     edges.push_back(AddEdge(currentEdge));
     events.push_back(event);
     afterSpawn = true;
+    spawnedAtLeastOnce = true;
 }
 
 void BareboneSPDAG::Sync(SPEdgeData & currentEdge, size_t regionId) {
+    if (!spawnedAtLeastOnce) // If there wasn't a spawn before, this is the final simulated sync.
+    {
+        isComplete = true;
+        return;
+    }
+
     SPEvent event;
     event.spawn = 0;
 
@@ -58,6 +65,9 @@ void BareboneSPDAG::Sync(SPEdgeData & currentEdge, size_t regionId) {
 }
 
 SPComponent BareboneSPDAG::AggregateComponents(SPEdgeProducer * edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold) {
+    if (IsComplete() && !spawnedAtLeastOnce)
+        return SPComponent();
+
     SPComponent start{ edgeProducer->NextData() };
 
     SPEvent event = eventProducer->Next();
