@@ -47,11 +47,11 @@ toolfiles: hooks.cpp hooks2.cpp FullSPDAG.cpp BareboneSPDAG.cpp SPComponent.cpp 
 	touch toolfiles
 
 instr.o: tool.bc test.cpp csirt.bc config.txt
-	$(CSICLANGPP) -fcilkplus $(CXXFLAGS) -c -fcsi test.cpp -mllvm -csi-config-mode -mllvm "whitelist" -mllvm -csi-config-filename -mllvm "config.txt" -mllvm -csi-tool-bitcode -mllvm "tool.bc" -mllvm -csi-runtime-bitcode -mllvm "csirt.bc" -o instr.o 
+	$(CSICLANGPP) -fcilkplus $(CXXFLAGS) -c -fcsi=aftertapirloops test.cpp -mllvm -csi-config-mode -mllvm "whitelist" -mllvm -csi-config-filename -mllvm "config.txt" -mllvm -csi-tool-bitcode -mllvm "tool.bc" -mllvm -csi-runtime-bitcode -mllvm "csirt.bc" -o instr.o 
 
 debug: tool.bc test.cpp csirt.bc 
-	$(CSICLANGPP) -fcilkplus $(CXXFLAGS) -S -emit-llvm -fcsi test.cpp -mllvm -csi-tool-bitcode -mllvm "tool.bc" -mllvm -csi-runtime-bitcode -mllvm "csirt.bc"  -o ir.txt 
-	$(CSICLANGPP) -fcilkplus -O3 -fverbose-asm -S -masm=intel -fcsi test.cpp -mllvm -csi-tool-bitcode -mllvm "tool.bc" -mllvm -csi-runtime-bitcode -mllvm "csirt.bc"  -o asm.txt
+	$(CSICLANGPP) -fcilkplus $(CXXFLAGS) -S -emit-llvm -fcsi=aftertapirloops test.cpp -mllvm -csi-tool-bitcode -mllvm "tool.bc" -mllvm -csi-runtime-bitcode -mllvm "csirt.bc"  -o ir.txt 
+	$(CSICLANGPP) -fcilkplus -O3 -fverbose-asm -S -masm=intel -fcsi=aftertapirloops test.cpp -mllvm -csi-tool-bitcode -mllvm "tool.bc" -mllvm -csi-runtime-bitcode -mllvm "csirt.bc"  -o asm.txt
 	touch debug
 
 clean:
