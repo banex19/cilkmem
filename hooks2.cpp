@@ -1,11 +1,13 @@
 
 #include "hooks.h"
 #include <thread>
+#include <stdlib.h>
+#include <cstring>
 
 
-const bool fullSPDAG = true;
-const bool runOnline = false;
-const bool runEfficient = false;
+bool fullSPDAG = true;
+bool runOnline = false;
+bool runEfficient = false;
 
 OutputPrinter out{ std::cout };
 OutputPrinter alwaysOut{ std::cout };
@@ -15,6 +17,24 @@ SPEdgeData currentEdge;
 extern size_t currentLevel;
 
 std::thread* aggregatingThread = nullptr;
+
+void SetOption(bool* option, const char* envVarName, const char* trueString, const char* falseString) {
+    char* string = getenv(envVarName);
+    
+    if (string == nullptr)
+        return;
+
+    if (strcmp(string, trueString) == 0)
+        *option = true;
+    else if (strcmp(string, falseString) == 0)
+        *option = false;
+}
+
+void GetOptionsFromEnvironment() {
+    SetOption(&fullSPDAG, "MHWM_FullSPDAG", "1", "0");
+    SetOption(&runOnline, "MHWM_Online", "1", "0");
+    SetOption(&runEfficient, "MHWM_Efficient", "1", "0");
+}
 
 extern "C" {
 
@@ -61,6 +81,8 @@ extern "C" {
     }
 
     void program_start() {
+        GetOptionsFromEnvironment();
+
         if (!dag)
         {
             if (fullSPDAG)
