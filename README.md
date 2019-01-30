@@ -29,4 +29,8 @@ CILK_NWORKERS=1 ./instr
 You can use the following environmental variables to set some of the tool's options:
   * **MHWM_FullSPDAG=1** -> Make the tool keep more information on the SP DAG so that it can be output as a graph for easier visualization.
   * **MHWM_Online=1** -> Run the memory high-water mark algorithm online. If set to 0, the algorithm is run at the end of the program.
-  * **MHWN_Efficient=1** -> Run the memory-efficient version of the algorithm.
+  * **MHWM_Efficient=1** -> Run the memory-efficient version of the algorithm.
+
+You can also configure the memory limit you want to test the program against and the number of processors (respectively `M` and `p`, used to calculate `2M/p` by the algorithm):
+  * **MHWM_MemLimit=(value)**
+  * **NHWM_NumProcessors=(value)**

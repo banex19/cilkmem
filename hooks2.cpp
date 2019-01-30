@@ -9,6 +9,10 @@ bool fullSPDAG = true;
 bool runOnline = false;
 bool runEfficient = false;
 
+int64_t memLimit = 10000;
+int64_t p = 2;
+
+
 OutputPrinter out{ std::cout };
 OutputPrinter alwaysOut{ std::cout };
 SPDAG* dag = nullptr;
@@ -18,9 +22,20 @@ extern size_t currentLevel;
 
 std::thread* aggregatingThread = nullptr;
 
+void SetOption(int64_t* option, const char* envVarName) {
+    char* string = getenv(envVarName);
+
+    if (string == nullptr)
+        return;
+
+    int64_t val = std::atoll(string);
+    if (val != 0)
+        *option = val;
+}
+
 void SetOption(bool* option, const char* envVarName, const char* trueString, const char* falseString) {
     char* string = getenv(envVarName);
-    
+
     if (string == nullptr)
         return;
 
@@ -34,13 +49,13 @@ void GetOptionsFromEnvironment() {
     SetOption(&fullSPDAG, "MHWM_FullSPDAG", "1", "0");
     SetOption(&runOnline, "MHWM_Online", "1", "0");
     SetOption(&runEfficient, "MHWM_Efficient", "1", "0");
+    SetOption(&memLimit, "MHWM_MemLimit");
+    SetOption(&p, "MHWM_NumProcessors");
 }
 
 extern "C" {
 
     void AggregateComponentsOnline() {
-        int64_t memLimit = 10000;
-        int64_t p = 2;
         int64_t threshold = memLimit / (2 * p);
 
         SPEdgeProducer* producer = nullptr;
