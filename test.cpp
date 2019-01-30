@@ -25,7 +25,8 @@ __attribute__((noinline)) int testSpawn(int x) {
 
     void* y = cilk_spawn testAlloc((size_t)x);
 
-    int k = printf("Testing subspawn\n");
+   // int k = printf("Testing subspawn\n");
+    int k = 2;
 
     mem = malloc(200);
 
@@ -85,8 +86,8 @@ __attribute__((noinline)) uint64_t rec(uint64_t n) {
 
 
 int main(int argc, char** argv) {
-    uint64_t n = 30;
-    uint64_t k = 1;
+    uint64_t n = 10;
+    uint64_t k = 5;
     if (argc > 1)
     {
         n = std::atoi(argv[1]);

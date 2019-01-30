@@ -7,9 +7,6 @@
 #include "MemPoolVector.h"
 #include "Nullable.h"
 
-
-constexpr bool debugVerbose = false;
-
 struct SPNode;
 class SPEdgeProducer;
 class SPEventBareboneOnlineProducer;
@@ -225,10 +222,12 @@ public:
     void Sync(SPEdgeData &currentEdge, size_t regionId);
 
     SPComponent AggregateComponents(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold);
-    SPComponent AggregateComponentsEfficient(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold) {return SPComponent(); }
+    SPComponent AggregateComponentsEfficient(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold);
 private:
     SPComponent AggregateComponentsSpawn(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold);
     SPComponent AggregateUntilSync(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, bool continuation, int64_t threshold);
+
+    SPComponent AggregateComponentsMultispawn(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold);
     
     SPBareboneEdge* AddEdge(const SPEdgeData& data) { SPBareboneEdge* edge = new SPBareboneEdge(); edge->data = data; return edge; }
 

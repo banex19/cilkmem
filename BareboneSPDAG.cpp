@@ -150,3 +150,88 @@ SPComponent BareboneSPDAG::AggregateUntilSync(SPEdgeProducer * edgeProducer, SPE
 
     return path;
 }
+
+SPComponent BareboneSPDAG::AggregateComponentsEfficient(SPEdgeProducer * edgeProducer, SPEventBareboneOnlineProducer * eventProducer, int64_t threshold) {
+    if (IsComplete() && !spawnedAtLeastOnce)
+        return SPComponent();
+
+    SPEvent event = eventProducer->Next();
+    DEBUG_ASSERT(event.spawn);
+
+    SPComponent start = AggregateComponentsMultispawn(edgeProducer, eventProducer, threshold);
+
+    event = eventProducer->Next();
+    DEBUG_ASSERT(!event.spawn);
+
+    start.CombineSeries(SPComponent(edgeProducer->NextData()));
+
+    // Make sure there are no more edges to consume.
+    SPBareboneEdge* next = edgeProducer->NextBarebone();
+    DEBUG_ASSERT_EX(next == nullptr, "There are still edges left with value %zu", next->data.memAllocated);
+    DEBUG_ASSERT(!eventProducer->HasNext());
+    DEBUG_ASSERT(IsComplete());
+
+    eventProducer->FreeLast();
+
+    return start;
+}
+
+SPComponent BareboneSPDAG::AggregateComponentsMultispawn(SPEdgeProducer * edgeProducer, SPEventBareboneOnlineProducer * eventProducer, int64_t threshold) {
+    SPMultispawnComponent multispawn;
+
+    // At this point, we have consumed the first event (the first spawn of the
+    // multispawn component), but not the first (incoming) edge.
+    SPComponent start{ edgeProducer->NextData() };
+    multispawn.IncrementOnContinuation(start, threshold);
+
+    bool isSpawn = true;
+    bool stop = false;
+    while (!stop)
+    {
+        DEBUG_ASSERT(eventProducer->HasNext());
+        SPEvent event = eventProducer->Next();
+
+        if (isSpawn) // We are going down a spawn sub-component of this multi-spawn component.
+        {
+            SPComponent spawn;
+
+            while (event.spawn)
+            {
+                DEBUG_ASSERT(event.newSync);
+
+                out << "Found child multispawn in spawn path of a parent multispawn\n";
+                spawn.CombineSeries(AggregateComponentsMultispawn(edgeProducer, eventProducer, threshold));
+                event = eventProducer->Next();
+            }
+
+            spawn.CombineSeries(SPComponent(edgeProducer->NextData()));
+
+            multispawn.IncrementOnSpawn(spawn, threshold);
+            isSpawn = false;
+        }
+        else // We are following a continuation sub-component.
+        {
+            SPComponent continuation;
+
+            while (event.spawn && event.newSync)
+            {
+                continuation.CombineSeries(AggregateComponentsMultispawn(edgeProducer, eventProducer, threshold));
+                event = eventProducer->Next();
+            }
+
+            if (!event.spawn) // Have we reached a sync through the last continuation strand?
+            {
+                stop = true;
+            }
+
+            continuation.CombineSeries(SPComponent(edgeProducer->NextData()));
+
+            multispawn.IncrementOnContinuation(continuation, threshold);
+            isSpawn = true;
+        }
+    }
+
+    DEBUG_ASSERT(isSpawn);
+
+    return multispawn.ToComponent();
+}

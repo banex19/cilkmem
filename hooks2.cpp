@@ -8,6 +8,7 @@
 bool fullSPDAG = true;
 bool runOnline = false;
 bool runEfficient = false;
+bool debugVerbose = false;
 
 int64_t memLimit = 10000;
 int64_t p = 2;
@@ -38,6 +39,7 @@ void SetOption(bool* option, const char* envVarName, const char* trueString, con
 
     if (string == nullptr)
         return;
+    
 
     if (strcmp(string, trueString) == 0)
         *option = true;
@@ -56,8 +58,9 @@ void GetOptionsFromEnvironment() {
     SetOption(&fullSPDAG, "MHWM_FullSPDAG", "1", "0");
     SetOption(&runOnline, "MHWM_Online", "1", "0");
     SetOption(&runEfficient, "MHWM_Efficient", "1", "0");
+    SetOption(&debugVerbose, "MHWM_Debug", "1", "0");
     SetOption(&memLimit, "MHWM_MemLimit");
-    SetOption(&p, "MHWM_NumProcessors");
+    SetOption(&p, "MHWM_NumProcessors");  
 }
 
 extern "C" {
@@ -104,6 +107,9 @@ extern "C" {
 
     void program_start() {
         GetOptionsFromEnvironment();
+        out.SetActive(debugVerbose);
+
+        out << "Full: " << fullSPDAG << ", online: " << runOnline << ", efficient: " << runEfficient << "\n";
 
         if (!dag)
         {
@@ -112,8 +118,6 @@ extern "C" {
             else
                 dag = new BareboneSPDAG(out);
         }
-
-        out.SetActive(debugVerbose);
     }
 
     void program_exit() {
