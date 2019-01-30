@@ -33,4 +33,4 @@ You can use the following environmental variables to set some of the tool's opti
 
 You can also configure the memory limit you want to test the program against and the number of processors (respectively `M` and `p`, used to calculate `2M/p` by the algorithm):
   * **MHWM_MemLimit=(value)**
-  * **NHWM_NumProcessors=(value)**
+  * **MHWM_NumProcessors=(value)**
