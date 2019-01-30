@@ -46,6 +46,13 @@ void SetOption(bool* option, const char* envVarName, const char* trueString, con
 }
 
 void GetOptionsFromEnvironment() {
+    char* cilkWorkers = getenv("CILK_NWORKERS");
+    if (cilkWorkers == nullptr || strcmp(cilkWorkers, "1") != 0)
+    {
+        alwaysOut << "ERROR: To run the tool you must set CILK_NWORKERS=1\n";
+        exit(-1);
+    }
+
     SetOption(&fullSPDAG, "MHWM_FullSPDAG", "1", "0");
     SetOption(&runOnline, "MHWM_Online", "1", "0");
     SetOption(&runEfficient, "MHWM_Efficient", "1", "0");
