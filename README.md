@@ -34,3 +34,14 @@ You can use the following environmental variables to set some of the tool's opti
 You can also configure the memory limit you want to test the program against and the number of processors (respectively `M` and `p`, used to calculate `2M/p` by the algorithm):
   * **MHWM_MemLimit=(value)**
   * **MHWM_NumProcessors=(value)**
+  
+# Example
+To run the tool offline, producing the full SP graph, using the non-efficient version of the algorithm, with M=10MiB and p=8:
+```
+MHWM_FullSPDAG=1 MHWM_Online=0 MHWM_Efficient=0 MHWM_MemLimit=10485760 MHWM_NumProcessors=8 CILK_NWORKERS=1 ./instr
+```
+
+To run the tool online, without producing the full graph, using the efficient version of the algorithm, with M=20KiB and p=4:
+```
+MHWM_FullSPDAG=0 MHWM_Online=1 MHWM_Efficient=1 MHWM_MemLimit=20480 MHWM_NumProcessors=4 CILK_NWORKERS=1 ./instr
+```
