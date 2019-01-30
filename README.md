@@ -24,3 +24,9 @@ The `instr` binary is instrumented with the memory high-water mark tool. Before 
 ```
 CILK_NWORKERS=1 ./instr
 ```
+
+# Tool's options
+You can use the following environmental variables to set some of the tool's options:
+  * **MHWM_FullSPDAG=1** -> Make the tool keep more information on the SP DAG so that it can be output as a graph for easier visualization.
+  * **MHWM_Online=1** -> Run the memory high-water mark algorithm online. If set to 0, the algorithm is run at the end of the program.
+  * **MHWN_Efficient=1** -> Run the memory-efficient version of the algorithm.
