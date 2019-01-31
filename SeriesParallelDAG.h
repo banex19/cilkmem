@@ -61,6 +61,36 @@ struct SPMultispawnComponent {
     SPComponent ToComponent();
 };
 
+struct SPNaiveComponent {
+    SPNaiveComponent(const SPEdgeData& edge, size_t p) : p(p) {
+        // r = new Nullable<int64_t>[p + 1];
+
+        memTotal = edge.memAllocated;
+
+        r[0] = std::max((int64_t)0, edge.memAllocated);
+        r[1] = edge.maxMemAllocated;
+
+        for (size_t i = 2; i < p + 1; ++i)
+        {
+            DEBUG_ASSERT(r[i] == Nullable<int64_t>());
+        }
+    }
+
+    ~SPNaiveComponent() {
+        //  delete[] r; 
+    }
+
+    void CombineParallel(const SPNaiveComponent& other);
+    void CombineSeries(const SPNaiveComponent& other);
+
+    int64_t GetWatermark();
+
+    size_t maxPos = 1;
+    size_t p;
+    int64_t memTotal;
+    Nullable<int64_t> r[12];
+};
+
 struct SPBareboneEdge {
     SPEdgeData data;
 };
@@ -137,6 +167,8 @@ public:
     virtual SPComponent AggregateComponents(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold) = 0;
     virtual SPComponent AggregateComponentsEfficient(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold) = 0;
 
+    virtual SPNaiveComponent AggregateComponentsNaive(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold, size_t p) = 0;
+
     virtual void Print() {}
     virtual void WriteDotFile(const std::string& filename) {}
 
@@ -173,11 +205,16 @@ public:
     SPComponent AggregateComponents(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold);
     SPComponent AggregateComponentsEfficient(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold);
 
+    SPNaiveComponent AggregateComponentsNaive(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold, size_t p);
+
 private:
     SPComponent AggregateMultispawn(SPEdgeProducer* edgeProducer, SPEdge* incomingEdge, SPNode* pivot, int64_t threshold);
 
     SPComponent AggregateComponentsFromNode(SPEdgeProducer* edgeProducer, SPNode* pivot, int64_t threshold);
     SPComponent AggregateUntilSync(SPEdgeProducer* edgeProducer, SPEdge* start, SPNode* syncNode, int64_t threshold);
+
+    SPNaiveComponent AggregateComponentsFromNodeNaive(SPEdgeProducer* edgeProducer, SPNode* pivot, int64_t threshold, size_t p);
+    SPNaiveComponent AggregateUntilSyncNaive(SPEdgeProducer* edgeProducer, SPEdge* start, SPNode* syncNode, int64_t threshold, size_t p);
 
     SPNode* AddNode() { SPNode* newNode = new SPNode(); newNode->id = nodes.size(); nodes.push_back(newNode); return newNode; }
 
@@ -223,12 +260,15 @@ public:
 
     SPComponent AggregateComponents(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold);
     SPComponent AggregateComponentsEfficient(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold);
+
+    SPNaiveComponent AggregateComponentsNaive(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold, size_t p) { return SPNaiveComponent(SPEdgeData(), 8); }
+
 private:
     SPComponent AggregateComponentsSpawn(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold);
     SPComponent AggregateUntilSync(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, bool continuation, int64_t threshold);
 
     SPComponent AggregateComponentsMultispawn(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold);
-    
+
     SPBareboneEdge* AddEdge(const SPEdgeData& data) { SPBareboneEdge* edge = new SPBareboneEdge(); edge->data = data; return edge; }
 
     std::vector<SPBareboneLevel> stack;

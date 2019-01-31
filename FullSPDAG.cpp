@@ -196,6 +196,28 @@ SPComponent FullSPDAG::AggregateComponentsEfficient(SPEdgeProducer * edgeProduce
     return final;
 }
 
+SPNaiveComponent FullSPDAG::AggregateComponentsNaive(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold, size_t p) {
+    if (IsComplete() && firstNode == nullptr)
+        return SPNaiveComponent(SPEdgeData(), 8);
+
+    DEBUG_ASSERT(firstNode != nullptr);
+
+    SPNaiveComponent start{ edgeProducer->NextData(), p };
+
+    start.CombineSeries(AggregateComponentsFromNodeNaive(edgeProducer, firstNode, threshold, p));
+
+    SPNaiveComponent end{ edgeProducer->NextData(), p };
+
+    start.CombineSeries(end);
+
+    // Make sure there are no more edges to consume.
+    SPEdge* next = edgeProducer->Next();
+    DEBUG_ASSERT(next == nullptr);
+    DEBUG_ASSERT(IsComplete());
+
+    return start;
+}
+
 
 SPComponent FullSPDAG::AggregateMultispawn(SPEdgeProducer * edgeProducer, SPEdge * incomingEdge, SPNode * pivot, int64_t threshold) {
     SPNode* sync = pivot->associatedSyncNode;
@@ -311,6 +333,63 @@ SPComponent FullSPDAG::AggregateUntilSync(SPEdgeProducer* edgeProducer, SPEdge *
         {
             currentEdge = edgeProducer->Next();
             subComponent.CombineSeries(SPComponent(currentEdge->data));
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    out << "Aggregated from " << startId << " to " << syncNode->id << "\n";
+
+    return subComponent;
+}
+
+SPNaiveComponent FullSPDAG::AggregateComponentsFromNodeNaive(SPEdgeProducer * edgeProducer, SPNode * pivot, int64_t threshold, size_t p) {
+    SPNode* sync = pivot->associatedSyncNode;
+    DEBUG_ASSERT_EX(sync != nullptr, "[AggregateComponentsFromNode] Node %zu has no sync node", pivot->id);
+
+    out << "Aggregating spawn from id " << pivot->id << " to id " << sync->id << "\n";
+
+    SPEdge* next = edgeProducer->Next();
+    SPNaiveComponent spawnPath = AggregateUntilSyncNaive(edgeProducer, next, sync, threshold, p);
+
+    out << "Finished subcomponent (spawn) from id " << pivot->id << " to id " << sync->id << "\n";
+
+    next = edgeProducer->Next();
+    SPNaiveComponent continuation = AggregateUntilSyncNaive(edgeProducer, next, sync, threshold, p);
+
+    spawnPath.CombineParallel(continuation);
+
+    out << "Finished subcomponent (continuation) from id " << pivot->id << " to id " << sync->id << "\n";
+
+    return spawnPath;
+}
+
+SPNaiveComponent FullSPDAG::AggregateUntilSyncNaive(SPEdgeProducer * edgeProducer, SPEdge * start, SPNode * syncNode, int64_t threshold, size_t p) {
+    size_t startId = start->from->id;
+    SPNaiveComponent subComponent{ start->data, p };
+
+    SPEdge* currentEdge = start;
+
+    while (currentEdge->to != syncNode)
+    {
+        SPNode* toNode = currentEdge->to;
+        SPNode* associatedSyncNode = toNode->associatedSyncNode;
+
+        DEBUG_ASSERT_EX(currentEdge->to->associatedSyncNode != nullptr, "[AggregateUntilSync] Node %zu has no sync node", toNode->id);
+
+        // There's another spawn in this path. Resolve that sub-component first.
+        out << "Found spawn from node " << toNode->id << "\n";
+        subComponent.CombineSeries(AggregateComponentsFromNodeNaive(edgeProducer, toNode, threshold, p));
+
+        // The spawn has returned, continue from the only edge coming out of that 
+        // spawn's associated sync node. Don't do anything if the sub-spawn shared the same sync.
+        // This can happen in a multispawn component.
+        if (associatedSyncNode != syncNode)
+        {
+            currentEdge = edgeProducer->Next();
+            subComponent.CombineSeries(SPNaiveComponent(currentEdge->data, p));
         }
         else
         {

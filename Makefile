@@ -14,6 +14,9 @@ ifndef LLVM_BIN
   $(error LLVM_BIN is undefined - please define LLVM_BIN as the directory containing the binaries of LLVM, e.g. /whatever/llvm/build/bin)
 endif
 
+memoryhook.so:  MemoryHook.cpp
+	$(CSICLANGPP) $(CXXFLAGS) -fPIC -shared MemoryHook.cpp -o memoryhook.so 
+
 # Some checks that file exist.
 check-files:
 	@test -s $(LLVM_DIR)/projects/compiler-rt/lib/csi/csirt.c || { echo "LLVM does not contain CSI in projects/compiler-rt! Exiting."; exit 1; }
@@ -54,7 +57,7 @@ normal: test.cpp
 	$(CSICLANGPP) $(CXXFLAGS) -fcilkplus  test.cpp -o normal
 
 # Link the instrumented program together.
-instr: tool.o instr.o
+instr: tool.o instr.o  memoryhook.so
 	$(CSICLANGPP) $(CXXFLAGS) instr.o tool.o  $(LLVM_BIN)/../lib/clang/6.0.0/lib/linux/libclang_rt.csi-x86_64.a -lcilkrts -lpthread -o instr
 
 # Get the bitcode of the CSI runtime.
@@ -62,4 +65,4 @@ csirt.bc: $(LLVM_DIR)/projects/compiler-rt/lib/csi/csirt.c
 	$(CSICLANG) -O3 -c -emit-llvm -std=c11 $(LLVM_DIR)/projects/compiler-rt/lib/csi/csirt.c -o csirt.bc
 
 clean:
-	rm -f normal instr *.o *.bc ir.txt asm.txt
+	rm -f normal instr *.o *.bc ir.txt asm.txt *.so

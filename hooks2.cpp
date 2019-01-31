@@ -8,10 +8,11 @@
 bool fullSPDAG = true;
 bool runOnline = false;
 bool runEfficient = false;
+bool runNaive = true;
 bool debugVerbose = false;
 
 int64_t memLimit = 10000;
-int64_t p = 2;
+size_t p = 2;
 
 
 OutputPrinter out{ std::cout };
@@ -23,13 +24,14 @@ extern size_t currentLevel;
 
 std::thread* aggregatingThread = nullptr;
 
-void SetOption(int64_t* option, const char* envVarName) {
+template <typename T>
+void SetOption(T* option, const char* envVarName) {
     char* string = getenv(envVarName);
 
     if (string == nullptr)
         return;
 
-    int64_t val = std::atoll(string);
+    T val = std::atoll(string);
     if (val != 0)
         *option = val;
 }
@@ -39,7 +41,7 @@ void SetOption(bool* option, const char* envVarName, const char* trueString, con
 
     if (string == nullptr)
         return;
-    
+
 
     if (strcmp(string, trueString) == 0)
         *option = true;
@@ -59,8 +61,15 @@ void GetOptionsFromEnvironment() {
     SetOption(&runOnline, "MHWM_Online", "1", "0");
     SetOption(&runEfficient, "MHWM_Efficient", "1", "0");
     SetOption(&debugVerbose, "MHWM_Debug", "1", "0");
+    SetOption(&runNaive, "MHWM_Naive", "1", "0");
     SetOption(&memLimit, "MHWM_MemLimit");
-    SetOption(&p, "MHWM_NumProcessors");  
+    SetOption(&p, "MHWM_NumProcessors");
+
+    if (p <= 0)
+    {
+        alwaysOut << "ERROR: p must be set to a positive value\n";
+        exit(-1);
+    }
 }
 
 extern "C" {
@@ -81,23 +90,48 @@ extern "C" {
         }
 
         SPComponent aggregated;
+        
         if (runEfficient)
-            aggregated = dag->AggregateComponentsEfficient(producer, eventProducer, threshold);
-        else
-            aggregated = dag->AggregateComponents(producer, eventProducer, threshold);
-
-        int64_t watermark = aggregated.GetWatermark(threshold);
-
-        aggregated.Print();
-
-        alwaysOut << "Memory high-water mark: " << watermark << "\n";
-        if (watermark <= (memLimit / 2))
         {
-            alwaysOut << "Program will use LESS than " << memLimit << " bytes\n";
+            aggregated = dag->AggregateComponentsEfficient(producer, eventProducer, threshold);
+        }
+        else if (runNaive)
+        {
+       
+            SPNaiveComponent naive = dag->AggregateComponentsNaive(producer, eventProducer, threshold, p);
+
+            int64_t watermark = naive.GetWatermark();
+
+            alwaysOut << "Memory high-water mark: " << watermark << "\n";
+            if (watermark <= (memLimit))
+            {
+                alwaysOut << "Program will use LESS than " << memLimit << " bytes\n";
+            }
+            else
+            {
+                alwaysOut << "Program will use AT LEAST " << (memLimit / 2) << " bytes\n";
+            }
         }
         else
         {
-            alwaysOut << "Program will use AT LEAST " << (memLimit / 2) << " bytes\n";
+            aggregated = dag->AggregateComponents(producer, eventProducer, threshold);
+        }
+
+        if (!runNaive)
+        {
+            int64_t watermark = aggregated.GetWatermark(threshold);
+
+            aggregated.Print();
+
+            alwaysOut << "Memory high-water mark: " << watermark << "\n";
+            if (watermark <= (memLimit / 2))
+            {
+                alwaysOut << "Program will use LESS than " << memLimit << " bytes\n";
+            }
+            else
+            {
+                alwaysOut << "Program will use AT LEAST " << (memLimit / 2) << " bytes\n";
+            }
         }
 
 

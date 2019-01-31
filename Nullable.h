@@ -17,6 +17,10 @@ public:
         return operator+(Nullable<T>(other));
     }
 
+    bool operator==(const  Nullable<T>&  other) {
+        return value == other.value;
+    }
+
     bool operator<=(const  Nullable<T>&  other) {
         if (!HasValue())
             return true;
@@ -48,6 +52,15 @@ public:
             return *this;
         else return Nullable<T>(std::max(value, other.value));
     }
+
+    Nullable<T> Min(const Nullable<T>& other) const {
+        if (!HasValue())
+            return other;
+        else if (!other.HasValue())
+            return *this;
+        else return Nullable<T>(std::min(value, other.value));
+    }
+
 
     bool HasValue() const { return value != GetNullValue(); }
     T GetValue() const { return value; }

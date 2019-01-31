@@ -84,6 +84,19 @@ __attribute__((noinline)) uint64_t rec(uint64_t n) {
     return x + y;
 }
 
+uint64_t testFunction(uint64_t n) {
+    mem = malloc(n * 100);
+    
+    if (mem == nullptr)
+    {
+        mem = malloc(500);
+    }
+
+    free(mem);
+
+    return 0;
+}
+
 
 int main(int argc, char** argv) {
     uint64_t n = 10;
@@ -113,18 +126,21 @@ int main(int argc, char** argv) {
          mem = cilk_spawn testAlloc(10);
      } */
 
+#pragma cilk grainsize(1)
     cilk_for(size_t i = 0; i < k; ++i) {
-        uint64_t x = fib(n);
+        uint64_t x =  testFunction(n);
+        
     }
 
+    ;
 
-    mem = malloc(123);
+   // mem = malloc(123);
 
     //  cilk_sync;
 
     //  uint64_t x = cilk_spawn fib(3);
 
-    mem = malloc(500);
+  //  mem = malloc(500);
 
 
     //  printf("Returned %lu and %lu\n", x, y);

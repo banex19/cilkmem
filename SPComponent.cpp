@@ -16,6 +16,11 @@ std::ostream & operator<<(std::ostream & os, const Nullable<T>  & obj) {
 }
 
 template <typename T>
+Nullable<T> NullMin(const Nullable<T>& a, const Nullable<T> &b) {
+    return a.Min(b);
+}
+
+template <typename T>
 Nullable<T> NullMax(const Nullable<T>& a, const Nullable<T> &b) {
     return a.Max(b);
 }
@@ -168,4 +173,147 @@ void SPMultispawnComponent::Print() {
         ", singleSuspendEnd: " << singleSuspendEnd << ", singleIgnoreEnd: " <<
         singleIgnoreEnd << ", multiRobustSuspendEnd: " << multiRobustSuspendEnd <<
         ", multiRobustIgnoreEnd: " << multiRobustIgnoreEnd << "\n";
+}
+
+
+void SPNaiveComponent::CombineParallel(const SPNaiveComponent& other) {
+    NullableT* temp = new NullableT[p + 1];
+    memcpy(temp, r, sizeof(NullableT) * (p + 1));
+
+    for (size_t i = 0; i <= maxPos; ++i)
+    {
+        DEBUG_ASSERT(temp[i].HasValue());
+    }
+    for (size_t i = maxPos + 1; i < p + 1; ++i)
+    {
+        DEBUG_ASSERT(!temp[i].HasValue());
+    }
+
+    int64_t oldMemTotal = memTotal;
+
+    memTotal = memTotal + other.memTotal;
+
+    r[0] = std::min((int64_t)0, memTotal);
+
+    for (size_t i = 1; i < p + 1; ++i)
+    {
+        NullableT sum;
+        bool anyNonNull = false;
+
+        size_t j = std::max((int64_t)0, (int64_t)i - (int64_t)other.maxPos);
+        size_t jMax = std::min(i, maxPos);
+        for (; j <= jMax; ++j)
+            // for (size_t j = 0; j <= i; ++j)
+        {
+            NullableT term = temp[j] + other.r[i - j];
+            if (term.HasValue())
+            {
+                anyNonNull = true;
+                sum = NullMax(sum, term);
+            }
+        }
+
+
+        if (anyNonNull)
+            r[i] = sum;
+        else
+            r[i] = NullableT();
+    }
+
+   /* std::cout << "Combining parallel - G_1 (" << oldMemTotal << "):\n";
+    for (size_t i = 0; i < p + 1; ++i)
+    {
+        std::cout << "R[" << i << "]: " << temp[i] << ",  ";
+    }
+
+    std::cout << "\n";
+
+    std::cout << "Combining parallel - G_2 ( " << other.memTotal << "):\n";
+    for (size_t i = 0; i < p + 1; ++i)
+    {
+        std::cout << "R[" << i << "]: " << other.r[i] << ",  ";
+    }
+
+    std::cout << "\n";
+
+    std::cout << "Combining parallel - result (" << memTotal << "):\n";
+    for (size_t i = 0; i < p + 1; ++i)
+    {
+        std::cout << "R[" << i << "]: " << r[i] << ",  ";
+    }
+
+    std::cout << "\n"; */
+
+    maxPos = maxPos + other.maxPos;
+
+    delete[] temp;
+}
+
+void SPNaiveComponent::CombineSeries(const SPNaiveComponent & other) {
+    NullableT* temp = new NullableT[p + 1];
+    memcpy(temp, r, sizeof(NullableT) * (p + 1));
+
+
+    for (size_t i = 0; i <= maxPos; ++i)
+    {
+        DEBUG_ASSERT(temp[i].HasValue());
+    }
+    for (size_t i = maxPos + 1; i < p + 1; ++i)
+    {
+        DEBUG_ASSERT(!temp[i].HasValue());
+    }
+
+    int64_t oldMemTotal = memTotal;
+
+    memTotal = oldMemTotal + other.memTotal;
+
+    r[0] = std::min((int64_t)0, memTotal);
+
+    for (size_t i = 1; i < p + 1; ++i)
+    {
+        NullableT term = NullMax(temp[i], other.r[i] + oldMemTotal);
+        r[i] = term;
+    }
+
+/*    std::cout << "Combining series - G_1 (" << oldMemTotal << "):\n";
+    for (size_t i = 0; i < p + 1; ++i)
+    {
+        std::cout << "R[" << i << "]: " << temp[i] << ",  ";
+    }
+
+    std::cout << "\n";
+
+    std::cout << "Combining series -  G_2 (" << other.memTotal << "):\n";
+    for (size_t i = 0; i < p + 1; ++i)
+    {
+        std::cout << "R[" << i << "]: " << other.r[i] << ",  ";
+    }
+
+    std::cout << "\n";
+
+    std::cout << "Combining series - result (" << memTotal << "):\n";
+    for (size_t i = 0; i < p + 1; ++i)
+    {
+        std::cout << "R[" << i << "]: " << r[i] << ",  ";
+    }
+
+    std::cout << "\n";*/
+
+    maxPos = std::max(maxPos, other.maxPos); 
+
+    delete[] temp;
+}
+
+int64_t SPNaiveComponent::GetWatermark() {
+    NullableT watermark = r[0];
+
+    for (size_t i = 1; i < p + 1; ++i)
+    {
+        watermark = NullMax(watermark, r[i]);
+    }
+
+    DEBUG_ASSERT(watermark.HasValue());
+
+    return watermark.GetValue();
+
 }
