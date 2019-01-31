@@ -126,7 +126,7 @@ int main(int argc, char** argv) {
          mem = cilk_spawn testAlloc(10);
      } */
 
-#pragma cilk grainsize(1)
+#pragma cilk grainsize 10
     cilk_for(size_t i = 0; i < k; ++i) {
         uint64_t x =  testFunction(n);
         

@@ -62,8 +62,22 @@ struct SPMultispawnComponent {
 };
 
 struct SPNaiveComponent {
+    SPNaiveComponent(const SPNaiveComponent& other) = delete;
+
+    SPNaiveComponent(SPNaiveComponent&& other) {
+        p = other.p;
+        memTotal = other.memTotal;
+        maxPos = other.maxPos;
+        r = other.r;
+
+        other.r = nullptr;
+    }
+
+    SPNaiveComponent& operator=(const SPNaiveComponent& other) = delete;
+    SPNaiveComponent& operator=(const SPNaiveComponent&& other) = delete;
+
     SPNaiveComponent(const SPEdgeData& edge, size_t p) : p(p) {
-        // r = new Nullable<int64_t>[p + 1];
+        r = new Nullable<int64_t>[p + 1];
 
         memTotal = edge.memAllocated;
 
@@ -77,7 +91,7 @@ struct SPNaiveComponent {
     }
 
     ~SPNaiveComponent() {
-        //  delete[] r; 
+        delete[] r;
     }
 
     void CombineParallel(const SPNaiveComponent& other);
@@ -88,7 +102,7 @@ struct SPNaiveComponent {
     size_t maxPos = 1;
     size_t p;
     int64_t memTotal;
-    Nullable<int64_t> r[12];
+    Nullable<int64_t>* r = nullptr;
 };
 
 struct SPBareboneEdge {

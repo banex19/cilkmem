@@ -89,50 +89,38 @@ extern "C" {
             eventProducer = new SPEventBareboneOnlineProducer{ static_cast<BareboneSPDAG*>(dag) };
         }
 
-        SPComponent aggregated;
-        
+        int64_t watermark = 0;
+        int64_t watermarkCompare = memLimit / 2;
+
         if (runEfficient)
         {
-            aggregated = dag->AggregateComponentsEfficient(producer, eventProducer, threshold);
+            auto aggregated = dag->AggregateComponentsEfficient(producer, eventProducer, threshold);
+            aggregated.Print();
+            watermark = aggregated.GetWatermark(threshold);
         }
         else if (runNaive)
         {
-       
-            SPNaiveComponent naive = dag->AggregateComponentsNaive(producer, eventProducer, threshold, p);
-
-            int64_t watermark = naive.GetWatermark();
-
-            alwaysOut << "Memory high-water mark: " << watermark << "\n";
-            if (watermark <= (memLimit))
-            {
-                alwaysOut << "Program will use LESS than " << memLimit << " bytes\n";
-            }
-            else
-            {
-                alwaysOut << "Program will use AT LEAST " << (memLimit / 2) << " bytes\n";
-            }
+            auto aggregated = dag->AggregateComponentsNaive(producer, eventProducer, threshold, p);
+            watermark = aggregated.GetWatermark();
+            watermarkCompare = memLimit;
         }
         else
         {
-            aggregated = dag->AggregateComponents(producer, eventProducer, threshold);
-        }
-
-        if (!runNaive)
-        {
-            int64_t watermark = aggregated.GetWatermark(threshold);
-
+            auto aggregated = dag->AggregateComponents(producer, eventProducer, threshold);
             aggregated.Print();
-
-            alwaysOut << "Memory high-water mark: " << watermark << "\n";
-            if (watermark <= (memLimit / 2))
-            {
-                alwaysOut << "Program will use LESS than " << memLimit << " bytes\n";
-            }
-            else
-            {
-                alwaysOut << "Program will use AT LEAST " << (memLimit / 2) << " bytes\n";
-            }
+            watermark = aggregated.GetWatermark(threshold);
         }
+
+        alwaysOut << "Memory high-water mark: " << watermark << "\n";
+        if (watermark <= watermarkCompare)
+        {
+            alwaysOut << "Program will use LESS than " << memLimit << " bytes\n";
+        }
+        else
+        {
+            alwaysOut << "Program will use AT LEAST " << watermarkCompare << " bytes\n";
+        }
+
 
 
         delete producer;
@@ -142,8 +130,6 @@ extern "C" {
     void program_start() {
         GetOptionsFromEnvironment();
         out.SetActive(debugVerbose);
-
-        out << "Full: " << fullSPDAG << ", online: " << runOnline << ", efficient: " << runEfficient << "\n";
 
         if (!dag)
         {
