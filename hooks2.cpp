@@ -92,7 +92,7 @@ extern "C" {
         int64_t watermark = 0;
         int64_t watermarkCompare = memLimit / 2;
 
-        if (runEfficient)
+        if (!runNaive && runEfficient)
         {
             auto aggregated = dag->AggregateComponentsEfficient(producer, eventProducer, threshold);
             aggregated.Print();
@@ -100,9 +100,18 @@ extern "C" {
         }
         else if (runNaive)
         {
-            auto aggregated = dag->AggregateComponentsNaive(producer, eventProducer, threshold, p);
-            watermark = aggregated.GetWatermark();
-            watermarkCompare = memLimit;
+            if (runEfficient)
+            {
+                auto aggregated = dag->AggregateComponentsNaiveEfficient(producer, eventProducer, threshold, p);
+                watermark = aggregated.GetWatermark();
+                watermarkCompare = memLimit;
+            }
+            else
+            {
+                auto aggregated = dag->AggregateComponentsNaive(producer, eventProducer, threshold, p);
+                watermark = aggregated.GetWatermark();
+                watermarkCompare = memLimit;
+            }
         }
         else
         {
@@ -151,7 +160,7 @@ extern "C" {
         // Print out the Series Parallel dag.
         // dag->Print();
 
-        if (!runOnline)
+        if (!runOnline && fullSPDAG)
             dag->WriteDotFile("sp.dot");
 
         if (!aggregatingThread) // Start aggregation if it wasn't being done online.

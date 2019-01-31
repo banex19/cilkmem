@@ -218,6 +218,28 @@ SPNaiveComponent FullSPDAG::AggregateComponentsNaive(SPEdgeProducer* edgeProduce
     return start;
 }
 
+SPNaiveComponent FullSPDAG::AggregateComponentsNaiveEfficient(SPEdgeProducer * edgeProducer, SPEventBareboneOnlineProducer * eventProducer, int64_t threshold, size_t p) {
+    if (IsComplete() && firstNode == nullptr)
+        return SPNaiveComponent(SPEdgeData(), 8);
+
+    DEBUG_ASSERT(firstNode != nullptr);
+
+    SPEdge* start = edgeProducer->Next();
+
+    SPNaiveComponent final = AggregateMultispawnNaive(edgeProducer, start, firstNode, threshold, p);
+
+    SPNaiveComponent end{ edgeProducer->NextData(),p };
+
+    final.CombineSeries(end);
+
+    // Make sure there are no more edges to consume.
+    SPEdge* next = edgeProducer->Next();
+    DEBUG_ASSERT(next == nullptr);
+    DEBUG_ASSERT(IsComplete());
+
+    return final;
+}
+
 
 SPComponent FullSPDAG::AggregateMultispawn(SPEdgeProducer * edgeProducer, SPEdge * incomingEdge, SPNode * pivot, int64_t threshold) {
     SPNode* sync = pivot->associatedSyncNode;
@@ -249,7 +271,7 @@ SPComponent FullSPDAG::AggregateMultispawn(SPEdgeProducer * edgeProducer, SPEdge
                 next = edgeProducer->Next();
             }
 
-            spawn.CombineSeries(next->data);
+            spawn.CombineSeries(SPComponent(next->data));
 
             multispawn.IncrementOnSpawn(spawn, threshold);
             isSpawn = false;
@@ -283,6 +305,70 @@ SPComponent FullSPDAG::AggregateMultispawn(SPEdgeProducer * edgeProducer, SPEdge
     out << "Multispawn from node " << pivot->id << ": ";
     //multispawn.ToComponent().Print();
 
+
+    return multispawn.ToComponent();
+}
+
+SPNaiveComponent FullSPDAG::AggregateMultispawnNaive(SPEdgeProducer * edgeProducer, SPEdge * incomingEdge, SPNode * pivot, int64_t threshold, size_t p) {
+    SPNode* sync = pivot->associatedSyncNode;
+    DEBUG_ASSERT_EX(sync != nullptr, "[AggregateMultispawn] Node %zu has no sync node", pivot->id);
+
+    out << "Aggregating multispawn from node " << pivot->id << "\n";
+
+    SPNaiveMultispawnComponent multispawn{ p };
+
+    SPNaiveComponent start{ incomingEdge->data, p };
+    multispawn.IncrementOnContinuation(start);
+
+    bool isSpawn = true;
+    bool stop = false;
+    while (!stop)
+    {
+        SPEdge* next = edgeProducer->Next();
+
+        if (isSpawn) // We are going down a spawn sub-component of this multi-spawn component.
+        {
+            SPNaiveComponent spawn{ p };
+
+            while (next->to != sync)
+            {
+                DEBUG_ASSERT(next->to->associatedSyncNode != sync);
+
+                out << "Found multispawn starting from node " << next->to->id << "\n";
+                spawn.CombineSeries(AggregateMultispawnNaive(edgeProducer, next, next->to, threshold, p));
+                next = edgeProducer->Next();
+            }
+
+            spawn.CombineSeries(SPNaiveComponent(next->data, p));
+
+            multispawn.IncrementOnSpawn(spawn);
+            isSpawn = false;
+        }
+        else // We are following a continuation sub-component.
+        {
+            SPNaiveComponent continuation{ p };
+
+            while (next->to != sync && next->to->associatedSyncNode != sync)
+            {
+                out << "Found multispawn starting from node " << next->to->id << "\n";
+                continuation.CombineSeries(AggregateMultispawnNaive(edgeProducer, next, next->to, threshold, p));
+                next = edgeProducer->Next();
+            }
+
+            if (next->to == sync) // Are we at the last continuation strand?
+            {
+                out << "Edge from " << next->from->id << " to " << next->to->id << " is the last continuation\n";
+                stop = true;
+            }
+
+            continuation.CombineSeries(SPNaiveComponent(next->data, p));
+
+            multispawn.IncrementOnContinuation(continuation);
+            isSpawn = true;
+        }
+    }
+
+    DEBUG_ASSERT(isSpawn);
 
     return multispawn.ToComponent();
 }

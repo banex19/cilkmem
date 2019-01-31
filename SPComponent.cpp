@@ -175,6 +175,22 @@ void SPMultispawnComponent::Print() {
         ", multiRobustIgnoreEnd: " << multiRobustIgnoreEnd << "\n";
 }
 
+SPNaiveComponent::SPNaiveComponent(const SPEdgeData& edge, size_t p) {
+    this->p = p;
+    r = new Nullable<int64_t>[p + 1];
+
+    memTotal = edge.memAllocated;
+
+    r[0] = std::max((int64_t)0, edge.memAllocated);
+    r[1] = edge.maxMemAllocated;
+
+    for (size_t i = 2; i < p + 1; ++i)
+    {
+        DEBUG_ASSERT(r[i] == Nullable<int64_t>());
+    }
+
+    maxPos = 1;
+}
 
 void SPNaiveComponent::CombineParallel(const SPNaiveComponent& other) {
     NullableT* temp = new NullableT[p + 1];
@@ -220,31 +236,31 @@ void SPNaiveComponent::CombineParallel(const SPNaiveComponent& other) {
             r[i] = NullableT();
     }
 
-   /* std::cout << "Combining parallel - G_1 (" << oldMemTotal << "):\n";
-    for (size_t i = 0; i < p + 1; ++i)
-    {
-        std::cout << "R[" << i << "]: " << temp[i] << ",  ";
-    }
+    /* std::cout << "Combining parallel - G_1 (" << oldMemTotal << "):\n";
+     for (size_t i = 0; i < p + 1; ++i)
+     {
+         std::cout << "R[" << i << "]: " << temp[i] << ",  ";
+     }
 
-    std::cout << "\n";
+     std::cout << "\n";
 
-    std::cout << "Combining parallel - G_2 ( " << other.memTotal << "):\n";
-    for (size_t i = 0; i < p + 1; ++i)
-    {
-        std::cout << "R[" << i << "]: " << other.r[i] << ",  ";
-    }
+     std::cout << "Combining parallel - G_2 ( " << other.memTotal << "):\n";
+     for (size_t i = 0; i < p + 1; ++i)
+     {
+         std::cout << "R[" << i << "]: " << other.r[i] << ",  ";
+     }
 
-    std::cout << "\n";
+     std::cout << "\n";
 
-    std::cout << "Combining parallel - result (" << memTotal << "):\n";
-    for (size_t i = 0; i < p + 1; ++i)
-    {
-        std::cout << "R[" << i << "]: " << r[i] << ",  ";
-    }
+     std::cout << "Combining parallel - result (" << memTotal << "):\n";
+     for (size_t i = 0; i < p + 1; ++i)
+     {
+         std::cout << "R[" << i << "]: " << r[i] << ",  ";
+     }
 
-    std::cout << "\n"; */
+     std::cout << "\n"; */
 
-    maxPos = maxPos + other.maxPos;
+    maxPos = std::min(p, maxPos + other.maxPos);
 
     delete[] temp;
 }
@@ -253,6 +269,26 @@ void SPNaiveComponent::CombineSeries(const SPNaiveComponent & other) {
     NullableT* temp = new NullableT[p + 1];
     memcpy(temp, r, sizeof(NullableT) * (p + 1));
 
+    int64_t oldMemTotal = memTotal;
+
+    if (maxPos > 0)
+    {
+     /*   std::cout << "Combining series - G_1 (" << oldMemTotal << ") - maxPos: " << maxPos << ":\n";
+        for (size_t i = 0; i < p + 1; ++i)
+        {
+            std::cout << "R[" << i << "]: " << temp[i] << ",  ";
+        }
+
+        std::cout << "\n";
+
+        std::cout << "Combining series -  G_2 (" << other.memTotal << ") - maxPos: " << other.maxPos << ":\n";
+        for (size_t i = 0; i < p + 1; ++i)
+        {
+            std::cout << "R[" << i << "]: " << other.r[i] << ",  ";
+        }
+
+        std::cout << "\n"; */
+    }
 
     for (size_t i = 0; i <= maxPos; ++i)
     {
@@ -262,8 +298,6 @@ void SPNaiveComponent::CombineSeries(const SPNaiveComponent & other) {
     {
         DEBUG_ASSERT(!temp[i].HasValue());
     }
-
-    int64_t oldMemTotal = memTotal;
 
     memTotal = oldMemTotal + other.memTotal;
 
@@ -275,31 +309,15 @@ void SPNaiveComponent::CombineSeries(const SPNaiveComponent & other) {
         r[i] = term;
     }
 
-/*    std::cout << "Combining series - G_1 (" << oldMemTotal << "):\n";
-    for (size_t i = 0; i < p + 1; ++i)
-    {
-        std::cout << "R[" << i << "]: " << temp[i] << ",  ";
-    }
-
-    std::cout << "\n";
-
-    std::cout << "Combining series -  G_2 (" << other.memTotal << "):\n";
-    for (size_t i = 0; i < p + 1; ++i)
-    {
-        std::cout << "R[" << i << "]: " << other.r[i] << ",  ";
-    }
-
-    std::cout << "\n";
-
-    std::cout << "Combining series - result (" << memTotal << "):\n";
+  /*  std::cout << "Combining series - result (" << memTotal << "):\n";
     for (size_t i = 0; i < p + 1; ++i)
     {
         std::cout << "R[" << i << "]: " << r[i] << ",  ";
     }
 
-    std::cout << "\n";*/
+    std::cout << "\n"; */
 
-    maxPos = std::max(maxPos, other.maxPos); 
+    maxPos = std::max(maxPos, other.maxPos);
 
     delete[] temp;
 }
@@ -316,4 +334,120 @@ int64_t SPNaiveComponent::GetWatermark() {
 
     return watermark.GetValue();
 
+}
+
+
+void SPNaiveMultispawnComponent::IncrementOnContinuation(const SPNaiveComponent& continuation) {
+
+    for (size_t i = 0; i <= maxPos; ++i)
+    {
+        DEBUG_ASSERT(partial[i].HasValue());
+    }
+    for (size_t i = maxPos + 1; i < p + 1; ++i)
+    {
+        DEBUG_ASSERT(!partial[i].HasValue());
+    }
+
+    for (size_t i = 1; i < p + 1; ++i)
+    {
+        suspendEnd[i] = suspendEnd[i] + continuation.memTotal;
+
+        NullableT maxPartial;
+        size_t j = std::max((int64_t)1, (int64_t)(i - maxPos));
+        size_t jMax = std::min((int64_t)continuation.maxPos, (int64_t)i);
+        for (; j <= jMax; ++j)
+        {
+            maxPartial = NullMax(maxPartial, partial[i - j] + continuation.r[j]);
+        }
+
+        ignoreEnd[i] = NullMax(ignoreEnd[i], maxPartial);
+
+        partial[i] = partial[i] + continuation.memTotal;
+    }
+
+    for (size_t i = 0; i < p + 1; ++i)
+    {
+        partial[i] = partial[i] + continuation.memTotal;
+    }
+
+    /* std::cout << "Incrementing on continuation - result (" << memTotal << "):\n";
+    for (size_t i = 0; i < p + 1; ++i)
+    {
+        std::cout << "Partial[" << i << "]: " << partial[i] << ",  ";
+    } 
+
+    std::cout << "\n"; */
+
+    memTotal += continuation.memTotal;
+}
+
+void SPNaiveMultispawnComponent::IncrementOnSpawn(const SPNaiveComponent & spawn) {
+    NullableT* oldPartial = new NullableT[p + 1];
+    memcpy(oldPartial, partial, sizeof(NullableT) * (p + 1));
+
+    for (size_t i = 0; i <= maxPos; ++i)
+    {
+        DEBUG_ASSERT(partial[i].HasValue());
+    }
+    for (size_t i = maxPos + 1; i < p + 1; ++i)
+    {
+        DEBUG_ASSERT(!partial[i].HasValue());
+    }
+
+    size_t oldMaxPos = maxPos;
+    maxPos = 0;
+
+    for (size_t i = 1; i < p + 1; ++i)
+    {
+        NullableT maxPartial;
+        size_t j = std::max((int64_t)1, (int64_t)(i - oldMaxPos));
+        size_t jMax = std::min((int64_t)spawn.maxPos, (int64_t)i);
+        for (; j <= jMax; ++j)
+        {
+            maxPartial = NullMax(maxPartial, oldPartial[i - j] + spawn.r[j]);
+        }
+
+
+        suspendEnd[i] = NullMax(suspendEnd[i] + spawn.memTotal, maxPartial);
+        ignoreEnd[i] = NullMax(ignoreEnd[i], maxPartial);
+        partial[i] = NullMax(oldPartial[i] + spawn.r[0], maxPartial);
+
+        if (partial[i].HasValue())
+            maxPos = i;
+    }
+
+    partial[0] = partial[0] + spawn.r[0];
+
+  /*  std::cout << "Incrementing on spawn - result (" << memTotal << "):\n";
+    for (size_t i = 0; i < p + 1; ++i)
+    {
+        std::cout << "Partial[" << i << "]: " << partial[i] << ",  ";
+    }
+
+    std::cout << "\n"; */
+
+    memTotal += spawn.memTotal;
+
+    delete[] oldPartial;
+}
+
+SPNaiveComponent SPNaiveMultispawnComponent::ToComponent() {
+    SPNaiveComponent component(SPEdgeData(), p);
+
+    component.memTotal = memTotal;
+
+    component.r[0] = std::max(memTotal, (int64_t)0);
+
+    component.maxPos = p;
+    for (size_t i = 1; i < p + 1; ++i)
+    {
+        component.r[i] = NullMax(suspendEnd[i], ignoreEnd[i]);
+        if (!component.r[i].HasValue())
+        {
+            component.maxPos = i - 1;
+            break;
+        }
+    }
+
+    return component;
 }
