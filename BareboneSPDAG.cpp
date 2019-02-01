@@ -75,12 +75,22 @@ SPComponent BareboneSPDAG::AggregateComponents(SPEdgeProducer * edgeProducer, SP
 
     start.CombineSeries(AggregateComponentsSpawn(edgeProducer, eventProducer, threshold));
 
+    event = eventProducer->Next();
+    while (event.spawn)
+    {
+        DEBUG_ASSERT(event.newSync);
+
+        start.CombineSeries(SPComponent(edgeProducer->NextData()));
+        start.CombineSeries(AggregateComponentsSpawn(edgeProducer, eventProducer, threshold));
+
+        event = eventProducer->Next();
+    }
+
+    DEBUG_ASSERT(!event.spawn);
+
     SPComponent end{ edgeProducer->NextData() };
 
     start.CombineSeries(end);
-
-    event = eventProducer->Next();
-    DEBUG_ASSERT(!event.spawn);
 
     // Make sure there are no more edges to consume.
     SPBareboneEdge* next = edgeProducer->NextBarebone();
@@ -161,9 +171,20 @@ SPComponent BareboneSPDAG::AggregateComponentsEfficient(SPEdgeProducer * edgePro
     SPComponent start = AggregateComponentsMultispawn(edgeProducer, eventProducer, threshold);
 
     event = eventProducer->Next();
+    while (event.spawn)
+    {
+        DEBUG_ASSERT(event.newSync);
+
+        start.CombineSeries(AggregateComponentsMultispawn(edgeProducer, eventProducer, threshold));
+
+        event = eventProducer->Next();
+    }
+
     DEBUG_ASSERT(!event.spawn);
 
-    start.CombineSeries(SPComponent(edgeProducer->NextData()));
+    SPComponent end{ edgeProducer->NextData() };
+
+    start.CombineSeries(end);
 
     // Make sure there are no more edges to consume.
     SPBareboneEdge* next = edgeProducer->NextBarebone();
