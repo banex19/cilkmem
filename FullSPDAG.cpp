@@ -162,12 +162,18 @@ SPComponent FullSPDAG::AggregateComponents(SPEdgeProducer* edgeProducer, SPEvent
 
     start.CombineSeries(AggregateComponentsFromNode(edgeProducer, firstNode, threshold));
 
-    SPComponent end{ edgeProducer->NextData() };
+    SPEdge* next = edgeProducer->Next();
+    while (next->to->associatedSyncNode != nullptr)
+    {
+        start.CombineSeries(SPComponent(next->data));
+        start.CombineSeries(AggregateComponentsFromNode(edgeProducer, next->to, threshold));
+        next = edgeProducer->Next();
+    }
 
-    start.CombineSeries(end);
+    start.CombineSeries(SPComponent(next->data));
 
     // Make sure there are no more edges to consume.
-    SPEdge* next = edgeProducer->Next();
+    next = edgeProducer->Next();
     DEBUG_ASSERT(next == nullptr);
     DEBUG_ASSERT(IsComplete());
 
@@ -184,12 +190,17 @@ SPComponent FullSPDAG::AggregateComponentsEfficient(SPEdgeProducer * edgeProduce
 
     SPComponent final = AggregateMultispawn(edgeProducer, start, firstNode, threshold);
 
-    SPComponent end{ edgeProducer->NextData() };
+    SPEdge* next = edgeProducer->Next();
+    while (next->to->associatedSyncNode != nullptr)
+    {
+        final.CombineSeries(AggregateMultispawn(edgeProducer, next, next->to, threshold));
+        next = edgeProducer->Next();
+    }
 
-    final.CombineSeries(end);
+    final.CombineSeries(SPComponent(next->data));
 
     // Make sure there are no more edges to consume.
-    SPEdge* next = edgeProducer->Next();
+    next = edgeProducer->Next();
     DEBUG_ASSERT(next == nullptr);
     DEBUG_ASSERT(IsComplete());
 
@@ -206,12 +217,18 @@ SPNaiveComponent FullSPDAG::AggregateComponentsNaive(SPEdgeProducer* edgeProduce
 
     start.CombineSeries(AggregateComponentsFromNodeNaive(edgeProducer, firstNode, threshold, p));
 
-    SPNaiveComponent end{ edgeProducer->NextData(), p };
+    SPEdge* next = edgeProducer->Next();
+    while (next->to->associatedSyncNode != nullptr)
+    {
+        start.CombineSeries(SPNaiveComponent(next->data, p));
+        start.CombineSeries(AggregateComponentsFromNodeNaive(edgeProducer, next->to, threshold, p));
+        next = edgeProducer->Next();
+    }
 
-    start.CombineSeries(end);
+    start.CombineSeries(SPNaiveComponent(next->data, p));
 
     // Make sure there are no more edges to consume.
-    SPEdge* next = edgeProducer->Next();
+    next = edgeProducer->Next();
     DEBUG_ASSERT(next == nullptr);
     DEBUG_ASSERT(IsComplete());
 
@@ -228,12 +245,17 @@ SPNaiveComponent FullSPDAG::AggregateComponentsNaiveEfficient(SPEdgeProducer * e
 
     SPNaiveComponent final = AggregateMultispawnNaive(edgeProducer, start, firstNode, threshold, p);
 
-    SPNaiveComponent end{ edgeProducer->NextData(),p };
+    SPEdge* next = edgeProducer->Next();
+    while (next->to->associatedSyncNode != nullptr)
+    {
+        final.CombineSeries(AggregateMultispawnNaive(edgeProducer, next, next->to, threshold, p));
+        next = edgeProducer->Next();
+    }
 
-    final.CombineSeries(end);
+    final.CombineSeries(SPNaiveComponent(next->data, p));
 
     // Make sure there are no more edges to consume.
-    SPEdge* next = edgeProducer->Next();
+    next = edgeProducer->Next();
     DEBUG_ASSERT(next == nullptr);
     DEBUG_ASSERT(IsComplete());
 
