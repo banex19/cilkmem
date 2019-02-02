@@ -1,8 +1,8 @@
 # Configuration file for surgical instrumentation
 
-INTERPOSE
-malloc
-free
+#INTERPOSE
+#malloc
+#free
 #TestFunction, FunctionEntry, 
 #OtherFileFunction, FunctionExit
 #TestFunction

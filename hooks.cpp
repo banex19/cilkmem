@@ -7,6 +7,7 @@ size_t mainLevel = 0;
 extern SPDAG* dag;
 
 bool started = false;
+uint32_t mainThread = 0;
 
 
 extern "C" {
@@ -25,6 +26,8 @@ extern "C" {
 
         if (!started && functionName != nullptr && strcmp(functionName, "main") == 0)
         {
+            auto id = std::this_thread::get_id();
+            mainThread = *((uint32_t*)(&id));
             program_start();
             started = true;
             mainLevel = currentLevel + 1;
@@ -45,6 +48,7 @@ extern "C" {
         if (currentLevel == mainLevel && functionName != nullptr && strcmp(functionName, "main") == 0)
         {
             program_exit();
+            started = false;
         }
         
         if (started)

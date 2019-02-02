@@ -82,7 +82,22 @@ struct SPNaiveComponent {
     SPNaiveComponent& operator=(const SPNaiveComponent& other) = delete;
     SPNaiveComponent& operator=(const SPNaiveComponent&& other) = delete;
 
-    SPNaiveComponent(const SPEdgeData& edge, size_t p);
+    SPNaiveComponent(const SPEdgeData& edge, size_t p) {
+        this->p = p;
+        r = new Nullable<int64_t>[p + 1];
+
+        memTotal = edge.memAllocated;
+
+        r[0] = std::max((int64_t)0, edge.memAllocated);
+        r[1] = edge.maxMemAllocated;
+
+        for (size_t i = 2; i < p + 1; ++i)
+        {
+            DEBUG_ASSERT(r[i] == Nullable<int64_t>());
+        }
+
+        maxPos = 1;
+    }
 
     ~SPNaiveComponent() {
         delete[] r;

@@ -1,4 +1,4 @@
-#include "/home/daniele/llvm/build/lib/clang/6.0.0/include/cilk/cilk.h"
+#include <cilk/cilk.h>
 #include <iostream>
 #include <cstdio>
 #include <cstdint>
@@ -132,6 +132,14 @@ int main(int argc, char** argv) {
     for(size_t i = 0; i < k; ++i) {
         uint64_t x = cilk_spawn testFunction(n);
         
+    }
+
+    cilk_sync;
+
+    for (size_t i = 0; i < k; ++i)
+    {
+        uint64_t x = cilk_spawn testFunction(n);
+
     }
 
     cilk_sync;

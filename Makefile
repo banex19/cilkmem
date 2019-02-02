@@ -44,7 +44,7 @@ toolfiles: hooks.cpp hooks2.cpp FullSPDAG.cpp BareboneSPDAG.cpp SPComponent.cpp 
 
 # This is where the Cilk program is instrumented. This uses compile-time instrumentation, so it needs the tool's bitcode.
 instr.o: tool.bc test.cpp csirt.bc config.txt
-	$(CSICLANGPP) -fcilkplus $(CXXFLAGS) -c -fcsi=aftertapirloops test.cpp -mllvm -csi-config-mode -mllvm "whitelist" -mllvm -csi-config-filename -mllvm "config.txt" -mllvm -csi-tool-bitcode -mllvm "tool.bc" -mllvm -csi-runtime-bitcode -mllvm "csirt.bc" -o instr.o 
+	$(CSICLANGPP) -fcilkplus $(CXXFLAGS) -c -fcsi=aftertapirloops test.cpp -mllvm -csi-config-mode -mllvm "whitelist" -mllvm -csi-config-filename -mllvm "config.txt" -mllvm -csi-tool-bitcode -mllvm "tool.bc" -mllvm -csi-runtime-bitcode -mllvm "csirt.bc" -mllvm -csi-instrument-basic-blocks=false -mllvm -csi-instrument-memory-accesses=false -mllvm -csi-instrument-atomics=false -mllvm -csi-instrument-memintrinsics=false -mllvm -csi-instrument-allocfn=false -mllvm -csi-instrument-alloca=false -o instr.o 
 
 # This target outputs some extra information like the IR and the ASM of the Cilk program after instrumentation.
 debug: tool.bc test.cpp csirt.bc 
@@ -58,7 +58,7 @@ normal: test.cpp
 
 # Link the instrumented program together.
 instr: tool.o instr.o  memoryhook.so
-	$(CSICLANGPP) $(CXXFLAGS) instr.o tool.o  $(LLVM_BIN)/../lib/clang/6.0.0/lib/linux/libclang_rt.csi-x86_64.a -lcilkrts -lpthread -o instr
+	$(CSICLANGPP) $(CXXFLAGS) ./memoryhook.so instr.o tool.o  $(LLVM_BIN)/../lib/clang/6.0.0/lib/linux/libclang_rt.csi-x86_64.a -lcilkrts -lpthread -o instr
 
 # Get the bitcode of the CSI runtime.
 csirt.bc: $(LLVM_DIR)/projects/compiler-rt/lib/csi/csirt.c

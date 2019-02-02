@@ -163,44 +163,58 @@ extern "C" {
         if (!runOnline && fullSPDAG)
             dag->WriteDotFile("sp.dot");
 
-        if (!aggregatingThread) // Start aggregation if it wasn't being done online.
+        if (!runOnline)
+        {
             aggregatingThread = new std::thread{ AggregateComponentsOnline };
 
-        aggregatingThread->join();
+           // AggregateComponentsOnline();
+        }
+
+        if (aggregatingThread)
+            aggregatingThread->join();
 
         delete dag;
     }
 
+    std::unordered_map<void*, size_t> allocs;
+
     // Prepend the size to each allocated block so it can be retrieved
     // when calling free().
     void* __csi_interpose_malloc(size_t size) {
-        uint8_t* mem = (uint8_t*)malloc(sizeof(size_t) + size);
+        return malloc(size);
+        /*  uint8_t* mem = (uint8_t*)malloc(sizeof(size_t) + size);
 
-        if (size == 0) // Treat zero-allocations as non-zero for sake of testing.
-            size = 1;
+          if (size == 0) // Treat zero-allocations as non-zero for sake of testing.
+              size = 1;
 
-        currentEdge.memAllocated += size;
+          currentEdge.memAllocated += size;
 
-        if (currentEdge.memAllocated > currentEdge.maxMemAllocated)
-            currentEdge.maxMemAllocated = currentEdge.memAllocated;
+          if (currentEdge.memAllocated > currentEdge.maxMemAllocated)
+              currentEdge.maxMemAllocated = currentEdge.memAllocated;
 
-        // Store the size of the allocation.
-        memcpy(mem, &size, sizeof(size_t));
+          // Store the size of the allocation.
+          memcpy(mem, &size, sizeof(size_t));
 
-        return mem + sizeof(size_t);
+          allocs[mem] = size;
+
+          return mem + sizeof(size_t); */
     }
 
     void  __csi_interpose_free(void* mem) {
-        uint8_t* addr = (uint8_t*)mem;
-        addr = addr - sizeof(size_t);
+        free(mem);
+        /*   DEBUG_ASSERT(allocs.find(mem) != allocs.end());
 
-        size_t size = 0;
-        memcpy(&size, addr, sizeof(size_t));
-        DEBUG_ASSERT(size > 0);
+           uint8_t* addr = (uint8_t*)mem;
+           addr = addr - sizeof(size_t);
 
-        currentEdge.memAllocated -= size;
+           size_t size = 0;
+           memcpy(&size, addr, sizeof(size_t));
+           DEBUG_ASSERT(size > 0);
+           DEBUG_ASSERT(allocs[mem] == size);
 
-        free(addr);
+           currentEdge.memAllocated -= size;
+
+           free(addr); */
     }
 
     void  __csi_before_call(const csi_id_t call_id, const csi_id_t func_id,
