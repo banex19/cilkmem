@@ -70,7 +70,9 @@ struct SPNaiveComponent {
         maxPos = 0;
     }
 
-    SPNaiveComponent(SPNaiveComponent&& other) {
+    void MoveOther(SPNaiveComponent&& other) {
+        delete[] r;
+
         p = other.p;
         memTotal = other.memTotal;
         maxPos = other.maxPos;
@@ -79,8 +81,15 @@ struct SPNaiveComponent {
         other.r = nullptr;
     }
 
+    SPNaiveComponent(SPNaiveComponent&& other) {
+        MoveOther(std::move(other));
+    }
+
     SPNaiveComponent& operator=(const SPNaiveComponent& other) = delete;
-    SPNaiveComponent& operator=(const SPNaiveComponent&& other) = delete;
+    SPNaiveComponent& operator=(SPNaiveComponent&& other) {
+        MoveOther(std::move(other));
+        return *this;
+    }
 
     SPNaiveComponent(const SPEdgeData& edge, size_t p) {
         this->p = p;
@@ -106,10 +115,10 @@ struct SPNaiveComponent {
     void CombineParallel(const SPNaiveComponent& other);
     void CombineSeries(const SPNaiveComponent& other);
 
-    int64_t GetWatermark();
+    int64_t GetWatermark(size_t watermarkP);
 
     size_t maxPos = 1;
-    size_t p;
+    size_t p = 0;
     int64_t memTotal = 0;
     Nullable<int64_t>* r = nullptr;
 };

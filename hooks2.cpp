@@ -100,18 +100,24 @@ extern "C" {
         }
         else if (runNaive)
         {
+            SPNaiveComponent aggregated{ p };
             if (runEfficient)
             {
-                auto aggregated = dag->AggregateComponentsNaiveEfficient(producer, eventProducer, threshold, p);
-                watermark = aggregated.GetWatermark();
-                watermarkCompare = memLimit;
+                aggregated = dag->AggregateComponentsNaiveEfficient(producer, eventProducer, threshold, p);       
             }
             else
             {
-                auto aggregated = dag->AggregateComponentsNaive(producer, eventProducer, threshold, p);
-                watermark = aggregated.GetWatermark();
-                watermarkCompare = memLimit;
+                aggregated = dag->AggregateComponentsNaive(producer, eventProducer, threshold, p);
             }
+
+            for (size_t i = 1; i <= p; ++i)
+            {
+                watermark = aggregated.GetWatermark(i);
+                alwaysOut << "Memory high-water mark for p = " << i << " : " << watermark << "\n";
+            }
+
+
+            watermarkCompare = memLimit;
         }
         else
         {
@@ -120,16 +126,18 @@ extern "C" {
             watermark = aggregated.GetWatermark(threshold);
         }
 
-        alwaysOut << "Memory high-water mark: " << watermark << "\n";
-        if (watermark <= watermarkCompare)
+        if (!runNaive)
         {
-            alwaysOut << "Program will use LESS than " << memLimit << " bytes\n";
+            alwaysOut << "Memory high-water mark: " << watermark << "\n";
+            if (watermark <= watermarkCompare)
+            {
+                alwaysOut << "The real high-water mark is LESS than " << memLimit << " bytes\n";
+            }
+            else
+            {
+                alwaysOut << "The real high-water mark is AT LEAST " << watermarkCompare << " bytes\n";
+            }
         }
-        else
-        {
-            alwaysOut << "Program will use AT LEAST " << watermarkCompare << " bytes\n";
-        }
-
 
 
         delete producer;

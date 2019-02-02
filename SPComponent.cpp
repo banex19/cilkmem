@@ -307,10 +307,12 @@ void SPNaiveComponent::CombineSeries(const SPNaiveComponent & other) {
     delete[] temp;
 }
 
-int64_t SPNaiveComponent::GetWatermark() {
+int64_t SPNaiveComponent::GetWatermark(size_t watermarkP) {
+    DEBUG_ASSERT(watermarkP <= p);
+
     NullableT watermark = r[0];
 
-    for (size_t i = 1; i < p + 1; ++i)
+    for (size_t i = 1; i < watermarkP + 1; ++i)
     {
         watermark = NullMax(watermark, r[i]);
     }
@@ -318,7 +320,6 @@ int64_t SPNaiveComponent::GetWatermark() {
     DEBUG_ASSERT(watermark.HasValue());
 
     return watermark.GetValue();
-
 }
 
 
