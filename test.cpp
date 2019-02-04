@@ -135,7 +135,7 @@ int main(int argc, char** argv) {
     }
 
     cilk_sync;
-
+/*
     for (size_t i = 0; i < k; ++i)
     {
         uint64_t x = cilk_spawn testFunction(n);
@@ -143,7 +143,7 @@ int main(int argc, char** argv) {
     }
 
     cilk_sync;
-
+*/
    // mem = malloc(123);
 
     //  cilk_sync;

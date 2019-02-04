@@ -30,6 +30,7 @@ uint32_t GetThreadId() {
 
 extern "C" {
     extern bool started;
+    extern bool inInstrumentation;
 
     extern SPEdgeData currentEdge;
 
@@ -49,7 +50,7 @@ extern "C" {
         if (size == 0) // Treat zero-allocations as non-zero for sake of testing.
             size = 1;
 
-        if (started
+        if (started && !inInstrumentation
             && (mainThread == 0 || GetThreadId() == mainThread)
             )
         {
@@ -125,7 +126,7 @@ extern "C" {
             
         }
 
-        if (started
+        if (started && !inInstrumentation 
             && (mainThread == 0 || GetThreadId() == mainThread)
             )
         {

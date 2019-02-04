@@ -7,6 +7,7 @@ size_t mainLevel = 0;
 extern SPDAG* dag;
 
 bool started = false;
+bool inInstrumentation = false;
 uint32_t mainThread = 0;
 
 
@@ -21,6 +22,7 @@ extern "C" {
         const instrumentation_counts_t counts) {}
 
     __attribute__((noinline))   void __csi_func_entry(const csi_id_t func_id, const func_prop_t prop) {
+        inInstrumentation = true;
 
         char* functionName = __csi_get_func_source_loc(func_id)->name;
 
@@ -38,10 +40,14 @@ extern "C" {
             currentLevel++;
             dag->IncrementLevel();
         }
+
+        inInstrumentation = false;
     }
 
     __attribute__((always_inline)) void __csi_func_exit(const csi_id_t func_exit_id,
         const csi_id_t func_id, const func_exit_prop_t prop) {
+
+        inInstrumentation = true;
 
         char* functionName = __csi_get_func_source_loc(func_id)->name;
 
@@ -56,5 +62,7 @@ extern "C" {
             dag->DecrementLevel();
             currentLevel--;
         }
+
+        inInstrumentation = false;
     }
 }
