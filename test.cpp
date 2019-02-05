@@ -94,7 +94,7 @@ uint64_t testFunction(uint64_t n) {
 
     free(mem);
 
-    mem = malloc(n * 10);
+    mem = malloc(n * 50);
 
     return 0;
 }
@@ -119,7 +119,7 @@ int main(int argc, char** argv) {
       //    cilk_spawn test(100);
      //  uint64_t x = cilk_spawn test(10);
 
-    mem = malloc(100);
+    mem = malloc(200);
     // uint64_t x = cilk_spawn fib(2);
    //  uint64_t y =  testSpawn(100);
 
@@ -128,13 +128,13 @@ int main(int argc, char** argv) {
          mem = cilk_spawn testAlloc(10);
      } */
 
-//#pragma cilk grainsize 10
-    for(size_t i = 0; i < k; ++i) {
-        uint64_t x = cilk_spawn testFunction(n);
+//#pragma cilk grainsize 1
+    cilk_for(size_t i = 0; i < k; ++i) {
+        uint64_t x = testFunction(n);
         
     }
 
-    cilk_sync;
+  //  cilk_sync;
 /*
     for (size_t i = 0; i < k; ++i)
     {

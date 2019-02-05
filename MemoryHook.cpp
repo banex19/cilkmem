@@ -22,8 +22,8 @@ extern uint32_t mainThread;
 uint32_t GetThreadId() {
     auto id = std::this_thread::get_id();
 
-    uint32_t uid = *((uint32_t*)(&id));
-
+    uint32_t uid;
+    memcpy(&uid, &id, std::min(sizeof(id), sizeof(uid)));
 
     return uid;
 }

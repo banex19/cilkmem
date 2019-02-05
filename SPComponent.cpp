@@ -308,7 +308,7 @@ void SPNaiveComponent::CombineSeries(const SPNaiveComponent & other) {
 }
 
 int64_t SPNaiveComponent::GetWatermark(size_t watermarkP) {
-    DEBUG_ASSERT(watermarkP <= p);
+    DEBUG_ASSERT_EX(watermarkP <= p, "Requested watermark for p = %zu but the algorithm ran on p = %zu", watermarkP, p);
 
     NullableT watermark = r[0];
 
@@ -347,8 +347,6 @@ void SPNaiveMultispawnComponent::IncrementOnContinuation(const SPNaiveComponent&
         }
 
         ignoreEnd[i] = NullMax(ignoreEnd[i], maxPartial);
-
-        partial[i] = partial[i] + continuation.memTotal;
     }
 
     for (size_t i = 0; i < p + 1; ++i)

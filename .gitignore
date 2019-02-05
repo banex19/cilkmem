@@ -16,3 +16,5 @@
 *.tmp
 perf*
 !config.txt
+*.png
+*.svg

@@ -545,7 +545,7 @@ void FullSPDAG::WriteDotFile(const std::string& filename) {
         DEBUG_ASSERT(edge->to);
         if (edge->forward)
         {
-            file << edge->from->id << " -> " << edge->to->id << " [label=" << edge->data.memAllocated;
+            file << edge->from->id << " -> " << edge->to->id << " [label=\"" << edge->data.memAllocated << " (" << edge->data.maxMemAllocated << ")\"";
             if (edge->spawn)
             {
                 file << ", penwidth=2, color=\"red\"";
