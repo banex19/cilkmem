@@ -94,7 +94,7 @@ uint64_t testFunction(uint64_t n) {
 
     free(mem);
 
-    mem = malloc(n * 50);
+    mem = malloc(n * 10);
 
     return 0;
 }
@@ -103,6 +103,7 @@ uint64_t testFunction(uint64_t n) {
 int main(int argc, char** argv) {
     uint64_t n = 10;
     uint64_t k = 5;
+    uint64_t o = 1;
     if (argc > 1)
     {
         n = std::atoi(argv[1]);
@@ -110,6 +111,10 @@ int main(int argc, char** argv) {
     if (argc > 2)
     {
         k = std::atoi(argv[2]);
+    }
+    if (argc > 3)
+    {
+        o = std::atoi(argv[3]);
     }
     //  uint64_t x = fib(3);
 
@@ -128,10 +133,13 @@ int main(int argc, char** argv) {
          mem = cilk_spawn testAlloc(10);
      } */
 
-//#pragma cilk grainsize 1
-    cilk_for(size_t i = 0; i < k; ++i) {
-        uint64_t x = testFunction(n);
-        
+    for (size_t j = 0; j < o; ++j)
+    {
+        #pragma cilk grainsize 1
+        cilk_for(size_t i = 0; i < k; ++i) {
+            uint64_t x = testFunction(n);
+
+        }
     }
 
   //  cilk_sync;

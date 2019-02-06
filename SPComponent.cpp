@@ -183,18 +183,18 @@ void SPNaiveComponent::CombineParallel(const SPNaiveComponent& other) {
 
     for (size_t i = 0; i <= maxPos; ++i)
     {
-        DEBUG_ASSERT(temp[i].HasValue());
+        DEBUG_ASSERT_EX(temp[i].HasValue(), "Element %zu is null but maxPos is %zu", i, maxPos);
     }
     for (size_t i = maxPos + 1; i < p + 1; ++i)
     {
-        DEBUG_ASSERT(!temp[i].HasValue());
+        DEBUG_ASSERT_EX(!temp[i].HasValue(), "Element %zu is not null but maxPos is %zu", i, maxPos);
     }
 
     int64_t oldMemTotal = memTotal;
 
     memTotal = memTotal + other.memTotal;
 
-    r[0] = std::min((int64_t)0, memTotal);
+    r[0] = std::max((int64_t)0, memTotal);
 
     for (size_t i = 1; i < p + 1; ++i)
     {
@@ -221,7 +221,7 @@ void SPNaiveComponent::CombineParallel(const SPNaiveComponent& other) {
             r[i] = NullableT();
     }
 
-    /* std::cout << "Combining parallel - G_1 (" << oldMemTotal << "):\n";
+   /*  std::cout << "Combining parallel - G_1 (" << oldMemTotal << ") - maxPos: " << maxPos << ":\n";
      for (size_t i = 0; i < p + 1; ++i)
      {
          std::cout << "R[" << i << "]: " << temp[i] << ",  ";
@@ -229,7 +229,7 @@ void SPNaiveComponent::CombineParallel(const SPNaiveComponent& other) {
 
      std::cout << "\n";
 
-     std::cout << "Combining parallel - G_2 ( " << other.memTotal << "):\n";
+     std::cout << "Combining parallel - G_2 (" << other.memTotal << ") - maxPos: " << other.maxPos << ":\n";
      for (size_t i = 0; i < p + 1; ++i)
      {
          std::cout << "R[" << i << "]: " << other.r[i] << ",  ";
@@ -237,13 +237,13 @@ void SPNaiveComponent::CombineParallel(const SPNaiveComponent& other) {
 
      std::cout << "\n";
 
-     std::cout << "Combining parallel - result (" << memTotal << "):\n";
+     std::cout << "Combining parallel - result (" << memTotal << ") - maxPos: " << maxPos << ":\n";
      for (size_t i = 0; i < p + 1; ++i)
      {
          std::cout << "R[" << i << "]: " << r[i] << ",  ";
      }
 
-     std::cout << "\n"; */
+     std::cout << "\n";  */
 
     maxPos = std::min(p, maxPos + other.maxPos);
 
@@ -258,7 +258,7 @@ void SPNaiveComponent::CombineSeries(const SPNaiveComponent & other) {
 
     if (maxPos > 0)
     {
-     /*   std::cout << "Combining series - G_1 (" << oldMemTotal << ") - maxPos: " << maxPos << ":\n";
+    /*    std::cout << "Combining series - G_1 (" << oldMemTotal << ") - maxPos: " << maxPos << ":\n";
         for (size_t i = 0; i < p + 1; ++i)
         {
             std::cout << "R[" << i << "]: " << temp[i] << ",  ";
@@ -277,16 +277,16 @@ void SPNaiveComponent::CombineSeries(const SPNaiveComponent & other) {
 
     for (size_t i = 0; i <= maxPos; ++i)
     {
-        DEBUG_ASSERT(temp[i].HasValue());
+        DEBUG_ASSERT_EX(temp[i].HasValue(), "Element %zu is null but maxPos is %zu", i, maxPos);
     }
     for (size_t i = maxPos + 1; i < p + 1; ++i)
     {
-        DEBUG_ASSERT(!temp[i].HasValue());
+        DEBUG_ASSERT_EX(!temp[i].HasValue(), "Element %zu is not null but maxPos is %zu", i, maxPos);
     }
 
     memTotal = oldMemTotal + other.memTotal;
 
-    r[0] = std::min((int64_t)0, memTotal);
+    r[0] = std::max((int64_t)0, memTotal);
 
     for (size_t i = 1; i < p + 1; ++i)
     {
@@ -294,15 +294,15 @@ void SPNaiveComponent::CombineSeries(const SPNaiveComponent & other) {
         r[i] = term;
     }
 
-  /*  std::cout << "Combining series - result (" << memTotal << "):\n";
+    maxPos = std::max(maxPos, other.maxPos);
+
+ /*   std::cout << "Combining series - result (" << memTotal << ") - maxPos: " << maxPos << ":\n";
     for (size_t i = 0; i < p + 1; ++i)
     {
         std::cout << "R[" << i << "]: " << r[i] << ",  ";
     }
 
-    std::cout << "\n"; */
-
-    maxPos = std::max(maxPos, other.maxPos);
+    std::cout << "\n";   */
 
     delete[] temp;
 }

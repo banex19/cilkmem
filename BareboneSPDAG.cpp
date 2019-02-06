@@ -175,7 +175,7 @@ SPNaiveComponent BareboneSPDAG::AggregateComponentsSpawnNaive(SPEdgeProducer * e
 SPNaiveComponent BareboneSPDAG::AggregateUntilSyncNaive(SPEdgeProducer * edgeProducer, SPEventBareboneOnlineProducer * eventProducer, bool continuation, int64_t threshold, size_t p) {
     out << "Aggregating until sync (continuation: " << continuation << ") - ";
 
-    SPNaiveComponent path{ SPEdgeData(), 1 };
+    SPNaiveComponent path{ SPEdgeData(), p };
     SPEvent event = eventProducer->Next();
 
     if (!event.spawn) // Single-edge sub-component.
@@ -405,7 +405,7 @@ SPNaiveComponent BareboneSPDAG::AggregateComponentsMultispawnNaive(SPEdgeProduce
 
         if (isSpawn) // We are going down a spawn sub-component of this multi-spawn component.
         {
-            SPNaiveComponent spawn{ SPEdgeData(), 1 };
+            SPNaiveComponent spawn{ SPEdgeData(), p };
 
             while (event.spawn)
             {
@@ -423,7 +423,7 @@ SPNaiveComponent BareboneSPDAG::AggregateComponentsMultispawnNaive(SPEdgeProduce
         }
         else // We are following a continuation sub-component.
         {
-            SPNaiveComponent continuation{ SPEdgeData(), 1 };
+            SPNaiveComponent continuation{ SPEdgeData(), p };
 
             while (event.spawn && event.newSync)
             {
