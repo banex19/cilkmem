@@ -12,6 +12,7 @@ bool runEfficient = false;
 bool runNaive = true;
 bool debugVerbose = false;
 bool showSource = true;
+bool outputDAG = true;
 
 std::string outputFile = "";
 
@@ -77,6 +78,7 @@ void GetOptionsFromEnvironment() {
     SetOption(&debugVerbose, "MHWM_Debug", "1", "0");
     SetOption(&runNaive, "MHWM_Naive", "1", "0");
     SetOption(&showSource, "MHWM_Source", "1", "0");
+    SetOption(&outputDAG, "MHWM_OutputDAG", "1", "0");
     SetOption(&memLimit, "MHWM_MemLimit");
     SetOption(&p, "MHWM_NumProcessors");
     SetOption(outputFile, "MHWM_OutputFile");
@@ -202,7 +204,7 @@ extern "C" {
         // Print out the Series Parallel dag.
         // dag->Print();
 
-        if (!runOnline && fullSPDAG)
+        if (outputDAG && !runOnline && fullSPDAG)
             dag->WriteDotFile("sp.dot");
 
         if (!runOnline)
