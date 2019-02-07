@@ -142,9 +142,6 @@ int main(int argc, char** argv) {
         }
     }
 
-    int x = (int)cilk_spawn testSpawn(5);
-    cilk_sync;
-
     //  cilk_sync;
   /*
       for (size_t i = 0; i < k; ++i)

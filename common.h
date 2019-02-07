@@ -3,6 +3,9 @@
 #include "OutputPrinter.h"
 #include <thread>      
 #include <chrono>    
+#include <iomanip>
+#include <sstream>
+#include <locale>
 
 #ifndef NDEBUG
 #define DEBUG_ASSERT(x) do { assert(x); } while(0)
@@ -11,3 +14,13 @@
 #define DEBUG_ASSERT(x) 
 #define DEBUG_ASSERT_EX(x, format, ...) 
 #endif
+
+static std::locale systemLocale{ "" };
+
+template<class T>
+std::string FormatWithCommas(T value) {
+    std::stringstream ss;
+    ss.imbue(systemLocale);
+    ss << std::fixed << value;
+    return ss.str();
+}
