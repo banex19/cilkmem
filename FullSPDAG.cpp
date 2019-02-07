@@ -531,12 +531,25 @@ void FullSPDAG::Print() {
     }
 }
 
+std::string GetDotNameForNode(const SPNode* node) {
+    if (node->locationName == nullptr)
+        return std::to_string(node->id);
+    else
+        return std::string(node->locationName) + "_" + std::to_string(node->locationLine);
+}
+
 void FullSPDAG::WriteDotFile(const std::string& filename) {
     std::ofstream file{ filename };
 
     DEBUG_ASSERT(file);
 
     file << "digraph {\nrankdir=LR\n";
+
+    for (size_t i = 0; i < nodes.size(); ++i)
+    {
+        SPNode* node = nodes[i];
+        file << node->id << "[label=\"" << GetDotNameForNode(node) << "\"]\n";
+    }
 
     for (size_t i = 0; i < edges.size(); ++i)
     {
@@ -545,7 +558,9 @@ void FullSPDAG::WriteDotFile(const std::string& filename) {
         DEBUG_ASSERT(edge->to);
         if (edge->forward)
         {
-            file << edge->from->id << " -> " << edge->to->id << " [label=\"" << edge->data.memAllocated << " (" << edge->data.maxMemAllocated << ")\"";
+
+            file << edge->from->id << " -> " << edge->to->id
+                << " [label=\"" << edge->data.memAllocated << " (" << edge->data.maxMemAllocated << ")\"";
             if (edge->spawn)
             {
                 file << ", penwidth=2, color=\"red\"";

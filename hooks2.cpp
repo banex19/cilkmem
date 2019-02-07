@@ -10,6 +10,7 @@ bool runOnline = false;
 bool runEfficient = false;
 bool runNaive = true;
 bool debugVerbose = false;
+bool showSource = true;
 
 int64_t memLimit = 10000;
 size_t p = 2;
@@ -63,6 +64,7 @@ void GetOptionsFromEnvironment() {
     SetOption(&runEfficient, "MHWM_Efficient", "1", "0");
     SetOption(&debugVerbose, "MHWM_Debug", "1", "0");
     SetOption(&runNaive, "MHWM_Naive", "1", "0");
+    SetOption(&showSource, "MHWM_Source", "1", "0");
     SetOption(&memLimit, "MHWM_MemLimit");
     SetOption(&p, "MHWM_NumProcessors");
 
@@ -104,7 +106,7 @@ extern "C" {
             SPNaiveComponent aggregated{ p };
             if (runEfficient)
             {
-                aggregated = dag->AggregateComponentsNaiveEfficient(producer, eventProducer, threshold, p);       
+                aggregated = dag->AggregateComponentsNaiveEfficient(producer, eventProducer, threshold, p);
             }
             else
             {
@@ -176,7 +178,7 @@ extern "C" {
         {
             aggregatingThread = new std::thread{ AggregateComponentsOnline };
 
-           // AggregateComponentsOnline();
+            // AggregateComponentsOnline();
         }
 
         if (aggregatingThread)
@@ -235,9 +237,15 @@ extern "C" {
     void  __attribute__((noinline))  __csi_detach(const csi_id_t detach_id, const int32_t* has_spawned) {
         inInstrumentation = true;
         out << "Spawn id " << detach_id << " (spawned: " << *has_spawned << ") - Addr: " << has_spawned
-            << " - Level: " << currentLevel << "\n ";
+            << " - Level: " << currentLevel;
+        if (__csi_get_detach_source_loc(detach_id)->name != nullptr)
+            out << " - Source: " << __csi_get_detach_source_loc(detach_id)->name << ":" << __csi_get_detach_source_loc(detach_id)->line_number;
+        out << "\n";
 
         dag->Spawn(currentEdge, (uintptr_t)has_spawned);
+        if (showSource && __csi_get_detach_source_loc(detach_id)->name != nullptr)
+            dag->SetLastNodeLocation((char*)__csi_get_detach_source_loc(detach_id)->name, __csi_get_detach_source_loc(detach_id)->line_number);
+
         currentEdge = SPEdgeData();
 
         out << "-----------------------\n";
@@ -254,9 +262,14 @@ extern "C" {
         const csi_id_t detach_id) {
         inInstrumentation = true;
 
-        out << "Task exit\n";
+        out << "Task exit ";
+        out << " - Source: " << __csi_get_task_exit_source_loc(task_exit_id)->name << ":" << __csi_get_task_exit_source_loc(task_exit_id)->line_number;
+        out << "\n";
 
         dag->Sync(currentEdge, 0);
+        if (showSource &&  __csi_get_task_exit_source_loc(task_exit_id)->name != nullptr)
+            dag->SetLastNodeLocation((char*)__csi_get_task_exit_source_loc(task_exit_id)->name, __csi_get_task_exit_source_loc(task_exit_id)->line_number);
+
         currentEdge = SPEdgeData();
 
         out << "-----------------------\n";
@@ -274,12 +287,18 @@ extern "C" {
         inInstrumentation = true;
 
         out << "Sync id " << sync_id << " (spawned: " << *has_spawned << ") - Addr: " << has_spawned
-            << " - Level: " << currentLevel << "\n ";
+            << " - Level: " << currentLevel;
+        if (__csi_get_sync_source_loc(sync_id)->name != nullptr)
+            out << " - Source: " << __csi_get_sync_source_loc(sync_id)->name << ":" << __csi_get_sync_source_loc(sync_id)->line_number;
+        out << "\n";
 
         if (*has_spawned <= 0)
             return;
 
         dag->Sync(currentEdge, (uintptr_t)has_spawned);
+        if (showSource && __csi_get_sync_source_loc(sync_id)->name != nullptr)
+            dag->SetLastNodeLocation((char*)__csi_get_sync_source_loc(sync_id)->name, __csi_get_sync_source_loc(sync_id)->line_number);
+
         currentEdge = SPEdgeData();
 
         out << "-----------------------\n";

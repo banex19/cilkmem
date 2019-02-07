@@ -196,6 +196,9 @@ struct SPNode {
     std::vector<SPEdge*> successors;
     size_t numStrandsLeft = 2;
     SPNode* associatedSyncNode;
+
+    char* locationName;
+    int32_t locationLine;
 };
 
 struct SPLevel {
@@ -259,6 +262,8 @@ public:
 
     bool IsComplete() { return isComplete; }
 
+    virtual void SetLastNodeLocation(char* name, int32_t line) {}
+
 protected:
     size_t currentLevel = 0;
 
@@ -289,6 +294,11 @@ public:
 
     SPNaiveComponent AggregateComponentsNaive(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold, size_t p);
     SPNaiveComponent AggregateComponentsNaiveEfficient(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold, size_t p);
+
+    void SetLastNodeLocation(char* name, int32_t line) {
+        lastNode->locationName = name;
+        lastNode->locationLine = line;
+    }
 
 private:
     SPComponent AggregateMultispawn(SPEdgeProducer* edgeProducer, SPEdge* incomingEdge, SPNode* pivot, int64_t threshold);

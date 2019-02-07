@@ -25,7 +25,7 @@ __attribute__((noinline)) int testSpawn(int x) {
 
     void* y = cilk_spawn testAlloc((size_t)x);
 
-   // int k = printf("Testing subspawn\n");
+    // int k = printf("Testing subspawn\n");
     int k = 2;
 
     mem = malloc(200);
@@ -62,7 +62,7 @@ __attribute__((noinline)) uint64_t fib(uint64_t n) {
 }
 
 __attribute__((noinline)) uint64_t rec(uint64_t n) {
-  //  std::cout << "rec(" << n << ")\n";
+    //  std::cout << "rec(" << n << ")\n";
     if (n < 2)
     {
         return n;
@@ -80,13 +80,13 @@ __attribute__((noinline)) uint64_t rec(uint64_t n) {
 
     mem = malloc(100);
 
- //   std::cout << "Finished rec(" << n << ")\n";
+    //   std::cout << "Finished rec(" << n << ")\n";
     return x + y;
 }
 
 uint64_t testFunction(uint64_t n) {
     mem = malloc(n * 100);
-    
+
     if (mem == nullptr)
     {
         mem = malloc(500);
@@ -135,33 +135,36 @@ int main(int argc, char** argv) {
 
     for (size_t j = 0; j < o; ++j)
     {
-        #pragma cilk grainsize 1
+#pragma cilk grainsize 1
         cilk_for(size_t i = 0; i < k; ++i) {
             uint64_t x = testFunction(n);
 
         }
     }
 
-  //  cilk_sync;
-/*
-    for (size_t i = 0; i < k; ++i)
-    {
-        uint64_t x = cilk_spawn testFunction(n);
-
-    }
-
+    int x = (int)cilk_spawn testSpawn(5);
     cilk_sync;
-*/
-   // mem = malloc(123);
 
     //  cilk_sync;
+  /*
+      for (size_t i = 0; i < k; ++i)
+      {
+          uint64_t x = cilk_spawn testFunction(n);
 
-    //  uint64_t x = cilk_spawn fib(3);
+      }
 
-  //  mem = malloc(500);
+      cilk_sync;
+  */
+  // mem = malloc(123);
+
+   //  cilk_sync;
+
+   //  uint64_t x = cilk_spawn fib(3);
+
+ //  mem = malloc(500);
 
 
-    //  printf("Returned %lu and %lu\n", x, y);
+   //  printf("Returned %lu and %lu\n", x, y);
 
 
     return 0;
