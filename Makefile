@@ -17,30 +17,50 @@ endif
 memoryhook.so:  MemoryHook.cpp
 	$(CSICLANGPP) $(CXXFLAGS) -fPIC -shared MemoryHook.cpp -o memoryhook.so 
 
-# Some checks that file exist.
+# Some checks that files exist.
 check-files:
 	@test -s $(LLVM_DIR)/projects/compiler-rt/lib/csi/csirt.c || { echo "LLVM does not contain CSI in projects/compiler-rt! Exiting."; exit 1; }
 	@test -s $(LLVM_BIN)/../lib/clang/6.0.0/lib/linux/libclang_rt.csi-x86_64.a || { echo "LLVM does not contain the CSI runtime in the lib folder! Exiting."; exit 1; }
 
 # These targets build the tool (first compiling to IR, and then to object files).
-tool.bc: toolfiles
+tool1.bc: hooks.cpp toolheaders
 	$(CSICLANGPP) -O3 -S -emit-llvm hooks.cpp -o tool1.bc
+
+tool2.bc: hooks2.cpp toolheaders 
 	$(CSICLANGPP) -O3 -S -emit-llvm hooks2.cpp -o tool2.bc
+
+tool3.bc: FullSPDAG.cpp toolheaders
 	$(CSICLANGPP) -O3 -S -emit-llvm FullSPDAG.cpp -o tool3.bc
+
+tool4.bc: SPComponent.cpp toolheaders
 	$(CSICLANGPP) -O3 -S -emit-llvm SPComponent.cpp -o tool4.bc
+
+tool5.bc: BareboneSPDAG.cpp toolheaders
 	$(CSICLANGPP) -O3 -S -emit-llvm BareboneSPDAG.cpp -o tool5.bc
+
+tool.bc: tool1.bc tool2.bc tool3.bc tool4.bc tool5.bc
 	$(LLVMLINK) tool1.bc tool2.bc tool3.bc tool4.bc tool5.bc -o tool.bc
 
-tool.o: toolfiles
+hooks1.o: hooks.cpp toolheaders
 	$(CSICLANGPP) $(CXXFLAGS) -c hooks.cpp -o hooks1.o
+	
+hooks2.o: hooks2.cpp toolheaders
 	$(CSICLANGPP) $(CXXFLAGS) -c hooks2.cpp -o hooks2.o
+
+hooks3.o: FullSPDAG.cpp toolheaders
 	$(CSICLANGPP) $(CXXFLAGS) -c FullSPDAG.cpp -o hooks3.o
+
+hooks4.o: SPComponent.cpp toolheaders
 	$(CSICLANGPP) $(CXXFLAGS) -c SPComponent.cpp -o hooks4.o
+
+hooks5.o: BareboneSPDAG.cpp toolheaders
 	$(CSICLANGPP) $(CXXFLAGS) -c BareboneSPDAG.cpp -o hooks5.o
+
+tool.o: hooks1.o hooks2.o hooks3.o hooks4.o hooks5.o 
 	ld -r hooks1.o hooks2.o hooks3.o hooks4.o hooks5.o -o tool.o
 
-toolfiles: hooks.cpp hooks2.cpp FullSPDAG.cpp BareboneSPDAG.cpp SPComponent.cpp OutputPrinter.h MemPoolVector.h SeriesParallelDAG.h hooks.h common.h SPEdgeProducer.h Nullable.h
-	touch toolfiles
+toolheaders: OutputPrinter.h MemPoolVector.h SeriesParallelDAG.h hooks.h common.h SPEdgeProducer.h Nullable.h
+	touch toolheaders
 
 # This is where the Cilk program is instrumented. This uses compile-time instrumentation, so it needs the tool's bitcode.
 instr.o: tool.bc test.cpp csirt.bc config.txt
