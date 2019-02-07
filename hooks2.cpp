@@ -3,6 +3,7 @@
 #include <thread>
 #include <stdlib.h>
 #include <cstring>
+#include <fstream>
 
 
 bool fullSPDAG = true;
@@ -11,6 +12,8 @@ bool runEfficient = false;
 bool runNaive = true;
 bool debugVerbose = false;
 bool showSource = true;
+
+std::string outputFile = "";
 
 int64_t memLimit = 10000;
 size_t p = 2;
@@ -36,6 +39,15 @@ void SetOption(T* option, const char* envVarName) {
     T val = std::atoll(string);
     if (val != 0)
         *option = val;
+}
+
+void SetOption(std::string& option, const char* envVarName) {
+    char * string = getenv(envVarName);
+
+    if (string == nullptr)
+        return;
+
+    option = string;
 }
 
 void SetOption(bool* option, const char* envVarName, const char* trueString, const char* falseString) {
@@ -67,6 +79,7 @@ void GetOptionsFromEnvironment() {
     SetOption(&showSource, "MHWM_Source", "1", "0");
     SetOption(&memLimit, "MHWM_MemLimit");
     SetOption(&p, "MHWM_NumProcessors");
+    SetOption(outputFile, "MHWM_OutputFile");
 
     if (p <= 0)
     {
@@ -113,12 +126,30 @@ extern "C" {
                 aggregated = dag->AggregateComponentsNaive(producer, eventProducer, threshold, p);
             }
 
+            std::ofstream* file = nullptr;
+            if (outputFile != "")
+            {
+                file = new std::ofstream{ outputFile };
+            }
+
             for (size_t i = 1; i <= p; ++i)
             {
                 watermark = aggregated.GetWatermark(i);
+
+                if (file && *file)
+                {
+                    *file << "Memory high-water mark for p = " << i << " : " << watermark << "\n";
+                }
+
                 alwaysOut << "Memory high-water mark for p = " << i << " : " << watermark << "\n";
             }
+         
 
+            if (file)
+            {
+                file->close();
+                delete file;
+            }
 
             watermarkCompare = memLimit;
         }
