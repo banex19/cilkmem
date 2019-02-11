@@ -187,7 +187,7 @@ public:
         return true;
     }
 
-    SPEvent Next(size_t sleep_ns = 0) {
+    SPEvent Next(size_t sleep_ns = DEFAULT_SLEEP_NS) {
         auto previous = current;
 
         if (current == nullptr) // Get the first event.
