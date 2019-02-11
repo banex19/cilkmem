@@ -253,11 +253,13 @@ void SPNaiveComponent::CombineParallel(const SPNaiveComponent& other) {
     maxPos = std::min(p, maxPos + other.maxPos);
 
     FreeArray(temp);
+
+    trivial = false;
 }
 
 void SPNaiveComponent::CombineSeries(const SPNaiveComponent & other) {
-    if (trivial && other.trivial)
-        return;
+     if (trivial && other.trivial)
+         return;
 
     NullableT* temp = AllocateArray(p + 1);
     memcpy(temp, r, sizeof(NullableT) * (p + 1));
@@ -313,6 +315,8 @@ void SPNaiveComponent::CombineSeries(const SPNaiveComponent & other) {
        std::cout << "\n";   */
 
     FreeArray(temp);
+
+    trivial = false;
 }
 
 int64_t SPNaiveComponent::GetWatermark(size_t watermarkP) {

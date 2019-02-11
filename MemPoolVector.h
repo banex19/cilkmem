@@ -88,9 +88,9 @@ public:
         head = (PooledNode<T>*)node->next;
         node->next = nullptr;
 
-        if (freeHead == nullptr)
+        if (freeTail == nullptr)
         {
-            DEBUG_ASSERT(freeTail == nullptr);
+            DEBUG_ASSERT(freeHead == nullptr);
             freeHead = freeTail = node;
         }
         else

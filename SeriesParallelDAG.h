@@ -101,6 +101,7 @@ struct SPNaiveComponent  : public SPArrayBasedComponent {
         memTotal = other.memTotal;
         maxPos = other.maxPos;
         r = other.r;
+        trivial = other.trivial;
 
         other.r = nullptr;
     }
@@ -119,19 +120,23 @@ struct SPNaiveComponent  : public SPArrayBasedComponent {
         trivial = edge.IsTrivial();
 
         this->p = p;
-        r = AllocateArray(p + 1);
 
-        memTotal = edge.memAllocated;
-
-        r[0] = std::max((int64_t)0, edge.memAllocated);
-        r[1] = edge.maxMemAllocated;
-
-        for (size_t i = 2; i < p + 1; ++i)
+       // if (!trivial)
         {
-            DEBUG_ASSERT(r[i] == Nullable<int64_t>());
-        }
+            r = AllocateArray(p + 1);
 
-        maxPos = 1;
+            memTotal = edge.memAllocated;
+
+            r[0] = std::max((int64_t)0, edge.memAllocated);
+            r[1] = edge.maxMemAllocated;
+
+            for (size_t i = 2; i < p + 1; ++i)
+            {
+                DEBUG_ASSERT(r[i] == Nullable<int64_t>());
+            }
+
+            maxPos = 1;
+        }
     }
 
     ~SPNaiveComponent() {
@@ -143,7 +148,7 @@ struct SPNaiveComponent  : public SPArrayBasedComponent {
 
     int64_t GetWatermark(size_t watermarkP);
 
-    size_t maxPos = 1;
+    size_t maxPos = 0;
     size_t p = 0;
     int64_t memTotal = 0;
     Nullable<int64_t>* r = nullptr;
