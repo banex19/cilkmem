@@ -1,6 +1,7 @@
 #pragma once
 #include <vector>
 #include <iostream>
+#include <deque>
 #include <unordered_map>
 #include <cstdint>
 #include "common.h"
@@ -369,7 +370,8 @@ private:
 
 class BareboneSPDAG : public SPDAG {
 public:
-    BareboneSPDAG(OutputPrinter& outputPrinter) : SPDAG(outputPrinter) {}
+    BareboneSPDAG(OutputPrinter& outputPrinter) : SPDAG(outputPrinter) {
+    }
 
     void Spawn(SPEdgeData &currentEdge, size_t regionId);
     void Sync(SPEdgeData &currentEdge, size_t regionId);
@@ -393,7 +395,7 @@ private:
 
     SPBareboneEdge* AddEdge(const SPEdgeData& data) { SPBareboneEdge* edge = (SPBareboneEdge*) memPool.Allocate(); edge->data = data; return edge; }
 
-    std::vector<SPBareboneLevel> stack;
+    std::deque<SPBareboneLevel> stack;
 
     MemPoolVector<SPEvent> events;
     MemPoolVector<SPBareboneEdge*> edges;
