@@ -96,8 +96,9 @@ public:
         else
         {
             DEBUG_ASSERT(freeTail != nullptr);
+            auto old = freeTail;
             freeTail = node;
-            freeTail->next = node;     
+            old->next = freeTail;
         }
 
     }
