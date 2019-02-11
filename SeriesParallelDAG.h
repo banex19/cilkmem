@@ -22,6 +22,10 @@ struct SPEdgeData {
     bool operator==(const SPEdgeData& other) const {
         return memAllocated == other.memAllocated;
     }
+
+    bool IsTrivial() {
+        return memAllocated == 0 && maxMemAllocated == 0;
+    }
 };
 
 struct SPComponent {
@@ -112,6 +116,8 @@ struct SPNaiveComponent  : public SPArrayBasedComponent {
     }
 
     SPNaiveComponent(const SPEdgeData& edge, size_t p) {
+        trivial = edge.IsTrivial();
+
         this->p = p;
         r = AllocateArray(p + 1);
 
@@ -141,6 +147,7 @@ struct SPNaiveComponent  : public SPArrayBasedComponent {
     size_t p = 0;
     int64_t memTotal = 0;
     Nullable<int64_t>* r = nullptr;
+    bool trivial = false;
 
 };
 

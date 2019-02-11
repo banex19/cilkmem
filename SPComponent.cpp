@@ -180,6 +180,9 @@ void SPMultispawnComponent::Print() {
 // SPNaiveComponent::SPNaiveComponent(const SPEdgeData& edge, size_t p)
 
 void SPNaiveComponent::CombineParallel(const SPNaiveComponent& other) {
+    if (trivial && other.trivial)
+        return;
+
     NullableT* temp = AllocateArray(p + 1);
     memcpy(temp, r, sizeof(NullableT) * (p + 1));
 
@@ -253,6 +256,9 @@ void SPNaiveComponent::CombineParallel(const SPNaiveComponent& other) {
 }
 
 void SPNaiveComponent::CombineSeries(const SPNaiveComponent & other) {
+    if (trivial && other.trivial)
+        return;
+
     NullableT* temp = AllocateArray(p + 1);
     memcpy(temp, r, sizeof(NullableT) * (p + 1));
 
