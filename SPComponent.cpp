@@ -1,6 +1,8 @@
 #include "SeriesParallelDAG.h"
 #include <algorithm>
 
+SingleThreadPool SPArrayBasedComponent::memPool{};
+
 template <typename T>
 Nullable<T> operator+(T a, const Nullable<T>& b) {
     return Nullable<T>(a).operator+(b);
@@ -178,7 +180,7 @@ void SPMultispawnComponent::Print() {
 // SPNaiveComponent::SPNaiveComponent(const SPEdgeData& edge, size_t p)
 
 void SPNaiveComponent::CombineParallel(const SPNaiveComponent& other) {
-    NullableT* temp = new NullableT[p + 1];
+    NullableT* temp = AllocateArray(p + 1);
     memcpy(temp, r, sizeof(NullableT) * (p + 1));
 
     for (size_t i = 0; i <= maxPos; ++i)
@@ -221,58 +223,58 @@ void SPNaiveComponent::CombineParallel(const SPNaiveComponent& other) {
             r[i] = NullableT();
     }
 
-   /*  std::cout << "Combining parallel - G_1 (" << oldMemTotal << ") - maxPos: " << maxPos << ":\n";
-     for (size_t i = 0; i < p + 1; ++i)
-     {
-         std::cout << "R[" << i << "]: " << temp[i] << ",  ";
-     }
+    /*  std::cout << "Combining parallel - G_1 (" << oldMemTotal << ") - maxPos: " << maxPos << ":\n";
+      for (size_t i = 0; i < p + 1; ++i)
+      {
+          std::cout << "R[" << i << "]: " << temp[i] << ",  ";
+      }
 
-     std::cout << "\n";
+      std::cout << "\n";
 
-     std::cout << "Combining parallel - G_2 (" << other.memTotal << ") - maxPos: " << other.maxPos << ":\n";
-     for (size_t i = 0; i < p + 1; ++i)
-     {
-         std::cout << "R[" << i << "]: " << other.r[i] << ",  ";
-     }
+      std::cout << "Combining parallel - G_2 (" << other.memTotal << ") - maxPos: " << other.maxPos << ":\n";
+      for (size_t i = 0; i < p + 1; ++i)
+      {
+          std::cout << "R[" << i << "]: " << other.r[i] << ",  ";
+      }
 
-     std::cout << "\n";
+      std::cout << "\n";
 
-     std::cout << "Combining parallel - result (" << memTotal << ") - maxPos: " << maxPos << ":\n";
-     for (size_t i = 0; i < p + 1; ++i)
-     {
-         std::cout << "R[" << i << "]: " << r[i] << ",  ";
-     }
+      std::cout << "Combining parallel - result (" << memTotal << ") - maxPos: " << maxPos << ":\n";
+      for (size_t i = 0; i < p + 1; ++i)
+      {
+          std::cout << "R[" << i << "]: " << r[i] << ",  ";
+      }
 
-     std::cout << "\n";  */
+      std::cout << "\n";  */
 
     maxPos = std::min(p, maxPos + other.maxPos);
 
-    delete[] temp;
+    FreeArray(temp);
 }
 
 void SPNaiveComponent::CombineSeries(const SPNaiveComponent & other) {
-    NullableT* temp = new NullableT[p + 1];
+    NullableT* temp = AllocateArray(p + 1);
     memcpy(temp, r, sizeof(NullableT) * (p + 1));
 
     int64_t oldMemTotal = memTotal;
 
     if (maxPos > 0)
     {
-    /*    std::cout << "Combining series - G_1 (" << oldMemTotal << ") - maxPos: " << maxPos << ":\n";
-        for (size_t i = 0; i < p + 1; ++i)
-        {
-            std::cout << "R[" << i << "]: " << temp[i] << ",  ";
-        }
+        /*    std::cout << "Combining series - G_1 (" << oldMemTotal << ") - maxPos: " << maxPos << ":\n";
+            for (size_t i = 0; i < p + 1; ++i)
+            {
+                std::cout << "R[" << i << "]: " << temp[i] << ",  ";
+            }
 
-        std::cout << "\n";
+            std::cout << "\n";
 
-        std::cout << "Combining series -  G_2 (" << other.memTotal << ") - maxPos: " << other.maxPos << ":\n";
-        for (size_t i = 0; i < p + 1; ++i)
-        {
-            std::cout << "R[" << i << "]: " << other.r[i] << ",  ";
-        }
+            std::cout << "Combining series -  G_2 (" << other.memTotal << ") - maxPos: " << other.maxPos << ":\n";
+            for (size_t i = 0; i < p + 1; ++i)
+            {
+                std::cout << "R[" << i << "]: " << other.r[i] << ",  ";
+            }
 
-        std::cout << "\n"; */
+            std::cout << "\n"; */
     }
 
     for (size_t i = 0; i <= maxPos; ++i)
@@ -296,15 +298,15 @@ void SPNaiveComponent::CombineSeries(const SPNaiveComponent & other) {
 
     maxPos = std::max(maxPos, other.maxPos);
 
- /*   std::cout << "Combining series - result (" << memTotal << ") - maxPos: " << maxPos << ":\n";
-    for (size_t i = 0; i < p + 1; ++i)
-    {
-        std::cout << "R[" << i << "]: " << r[i] << ",  ";
-    }
+    /*   std::cout << "Combining series - result (" << memTotal << ") - maxPos: " << maxPos << ":\n";
+       for (size_t i = 0; i < p + 1; ++i)
+       {
+           std::cout << "R[" << i << "]: " << r[i] << ",  ";
+       }
 
-    std::cout << "\n";   */
+       std::cout << "\n";   */
 
-    delete[] temp;
+    FreeArray(temp);
 }
 
 int64_t SPNaiveComponent::GetWatermark(size_t watermarkP) {
@@ -358,7 +360,7 @@ void SPNaiveMultispawnComponent::IncrementOnContinuation(const SPNaiveComponent&
     for (size_t i = 0; i < p + 1; ++i)
     {
         std::cout << "Partial[" << i << "]: " << partial[i] << ",  ";
-    } 
+    }
 
     std::cout << "\n"; */
 
@@ -366,7 +368,7 @@ void SPNaiveMultispawnComponent::IncrementOnContinuation(const SPNaiveComponent&
 }
 
 void SPNaiveMultispawnComponent::IncrementOnSpawn(const SPNaiveComponent & spawn) {
-    NullableT* oldPartial = new NullableT[p + 1];
+    NullableT* oldPartial = AllocateArray(p + 1);
     memcpy(oldPartial, partial, sizeof(NullableT) * (p + 1));
 
     for (size_t i = 0; i <= maxPos; ++i)
@@ -402,17 +404,17 @@ void SPNaiveMultispawnComponent::IncrementOnSpawn(const SPNaiveComponent & spawn
 
     partial[0] = partial[0] + spawn.r[0];
 
-  /*  std::cout << "Incrementing on spawn - result (" << memTotal << "):\n";
-    for (size_t i = 0; i < p + 1; ++i)
-    {
-        std::cout << "Partial[" << i << "]: " << partial[i] << ",  ";
-    }
+    /*  std::cout << "Incrementing on spawn - result (" << memTotal << "):\n";
+      for (size_t i = 0; i < p + 1; ++i)
+      {
+          std::cout << "Partial[" << i << "]: " << partial[i] << ",  ";
+      }
 
-    std::cout << "\n"; */
+      std::cout << "\n"; */
 
     memTotal += spawn.memTotal;
 
-    delete[] oldPartial;
+    FreeArray(oldPartial);
 }
 
 SPNaiveComponent SPNaiveMultispawnComponent::ToComponent() {

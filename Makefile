@@ -2,7 +2,8 @@ CSICLANG?=$(LLVM_BIN)/clang
 CSICLANGPP?=$(LLVM_BIN)/clang++
 LLVMLINK?=$(LLVM_BIN)/llvm-link
 
-CXXFLAGS?=-O3 -g -std=c++11
+EXTRAFLAGS?=""
+CXXFLAGS?=-O3 -g -std=c++11 $(EXTRAFLAGS)
 
 all: check-vars check-files instr normal debug
 
@@ -59,7 +60,7 @@ hooks5.o: BareboneSPDAG.cpp toolheaders
 tool.o: hooks1.o hooks2.o hooks3.o hooks4.o hooks5.o 
 	ld -r hooks1.o hooks2.o hooks3.o hooks4.o hooks5.o -o tool.o
 
-toolheaders: OutputPrinter.h MemPoolVector.h SeriesParallelDAG.h hooks.h common.h SPEdgeProducer.h Nullable.h
+toolheaders: OutputPrinter.h MemPoolVector.h SeriesParallelDAG.h hooks.h common.h SPEdgeProducer.h Nullable.h SingleThreadPool.h
 	touch toolheaders
 
 # This is where the Cilk program is instrumented. This uses compile-time instrumentation, so it needs the tool's bitcode.

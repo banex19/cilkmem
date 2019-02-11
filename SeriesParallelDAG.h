@@ -5,6 +5,7 @@
 #include <cstdint>
 #include "common.h"
 #include "MemPoolVector.h"
+#include "SingleThreadPool.h"
 #include "Nullable.h"
 
 struct SPNode;
@@ -61,17 +62,35 @@ struct SPMultispawnComponent {
     SPComponent ToComponent();
 };
 
-struct SPNaiveComponent {
+class SPArrayBasedComponent {
+
+protected:
+    Nullable<int64_t>* AllocateArray(size_t size) {
+        if (!memPool.IsInitialized())
+            memPool.Initialize(sizeof(Nullable<int64_t>) * size, 5000);
+
+        auto arr =  (Nullable<int64_t>*)  memPool.Allocate();
+        for (size_t i = 0; i < size; ++i)
+            arr[i].SetNull();
+
+        return arr;
+    }
+
+    void FreeArray(Nullable<int64_t>* arr) { if (arr != nullptr) memPool.Free(arr); }
+    static SingleThreadPool memPool;
+};
+
+struct SPNaiveComponent  : public SPArrayBasedComponent {
     SPNaiveComponent(const SPNaiveComponent& other) = delete;
 
     SPNaiveComponent(size_t p) :p(p) {
-        r = new Nullable<int64_t>[p + 1];
+        r = AllocateArray(p + 1);
         r[0] = 0;
         maxPos = 0;
     }
 
     void MoveOther(SPNaiveComponent&& other) {
-        delete[] r;
+        FreeArray(r);
 
         p = other.p;
         memTotal = other.memTotal;
@@ -93,7 +112,7 @@ struct SPNaiveComponent {
 
     SPNaiveComponent(const SPEdgeData& edge, size_t p) {
         this->p = p;
-        r = new Nullable<int64_t>[p + 1];
+        r = AllocateArray(p + 1);
 
         memTotal = edge.memAllocated;
 
@@ -109,7 +128,7 @@ struct SPNaiveComponent {
     }
 
     ~SPNaiveComponent() {
-        delete[] r;
+        FreeArray(r);
     }
 
     void CombineParallel(const SPNaiveComponent& other);
@@ -121,9 +140,10 @@ struct SPNaiveComponent {
     size_t p = 0;
     int64_t memTotal = 0;
     Nullable<int64_t>* r = nullptr;
+
 };
 
-struct SPNaiveMultispawnComponent {
+struct SPNaiveMultispawnComponent : public SPArrayBasedComponent{
     SPNaiveMultispawnComponent(const SPNaiveMultispawnComponent& other) = delete;
 
     SPNaiveMultispawnComponent(SPNaiveMultispawnComponent&& other) {
@@ -143,17 +163,17 @@ struct SPNaiveMultispawnComponent {
     SPNaiveMultispawnComponent& operator=(const SPNaiveMultispawnComponent&& other) = delete;
 
     SPNaiveMultispawnComponent(size_t p) : p(p) {
-        suspendEnd = new Nullable<int64_t>[p + 1];
-        ignoreEnd = new Nullable<int64_t>[p + 1];
-        partial = new Nullable<int64_t>[p + 1];
+        suspendEnd = AllocateArray(p + 1);
+        ignoreEnd = AllocateArray(p + 1);
+        partial = AllocateArray(p + 1);
 
         partial[0] = 0;
     }
 
     ~SPNaiveMultispawnComponent() {
-        delete[] suspendEnd;
-        delete[] ignoreEnd;
-        delete[] partial;
+        FreeArray(suspendEnd);
+        FreeArray(ignoreEnd);
+        FreeArray(partial);
     }
 
 
@@ -313,7 +333,7 @@ private:
     SPNode* AddNode() { SPNode* newNode = new SPNode(); newNode->id = nodes.size(); nodes.push_back(newNode); return newNode; }
 
     SPEdge* AddEdge(SPNode* from, SPNode* succ, const SPEdgeData &data, bool spawn = false) {
-        SPEdge* newEdge = new SPEdge();
+        SPEdge* newEdge = (SPEdge*) memPool.Allocate();
         newEdge->id = edges.size();
 
         newEdge->from = from;
@@ -343,6 +363,8 @@ private:
 
     friend class SPEdgeFullOnlineProducer;
     friend class SPNode;
+
+    SingleThreadPool memPool{ sizeof(SPEdge), 5000 };
 };
 
 class BareboneSPDAG : public SPDAG {
@@ -369,7 +391,7 @@ private:
 
     SPNaiveComponent AggregateComponentsMultispawnNaive(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold, size_t p);
 
-    SPBareboneEdge* AddEdge(const SPEdgeData& data) { SPBareboneEdge* edge = new SPBareboneEdge(); edge->data = data; return edge; }
+    SPBareboneEdge* AddEdge(const SPEdgeData& data) { SPBareboneEdge* edge = (SPBareboneEdge*) memPool.Allocate(); edge->data = data; return edge; }
 
     std::vector<SPBareboneLevel> stack;
 
@@ -382,5 +404,7 @@ private:
 
     friend class SPEdgeBareboneOnlineProducer;
     friend class SPEventBareboneOnlineProducer;
+
+    SingleThreadPool memPool{ sizeof(SPBareboneEdge), 5000 };
 
 };

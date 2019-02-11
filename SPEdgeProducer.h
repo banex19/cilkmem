@@ -77,7 +77,7 @@ private:
         DEBUG_ASSERT(node != nullptr);
 
         // Delete the edge.
-        delete node->data;
+        dag->memPool.Free(node->data);
         node->data = nullptr;
 
         // Return the node.
@@ -152,7 +152,7 @@ private:
         DEBUG_ASSERT(node != nullptr);
 
         // Delete the edge.
-        delete node->data;
+        dag->memPool.Free(node->data);
         node->data = nullptr;
 
         // Return the node.

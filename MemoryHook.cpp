@@ -43,7 +43,7 @@ extern "C" {
     static size_t magicValue = 0xAABBCCDDEEFFAABB;
 
     void* malloc(size_t size) {
-        numAllocs++;
+       // numAllocs++;
 
         uint8_t* mem = (uint8_t*)__libc_malloc(PAYLOAD_BYTES + size);
 
@@ -88,7 +88,7 @@ extern "C" {
 
 
 
-        DEBUG_ASSERT(numAllocs > numFrees);
+       // DEBUG_ASSERT(numAllocs > numFrees);
 
         uint8_t* addr = (uint8_t*)mem - PAYLOAD_BYTES;
 

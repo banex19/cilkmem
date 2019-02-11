@@ -13,7 +13,7 @@ struct PooledNode {
 template <typename T>
 class MemPoolVector {
 public:
-    MemPoolVector() : MemPoolVector(1000) {
+    MemPoolVector() : MemPoolVector(4000) {
 
     }
 
@@ -96,8 +96,8 @@ public:
         else
         {
             DEBUG_ASSERT(freeTail != nullptr);
-            freeTail->next = node;
             freeTail = node;
+            freeTail->next = node;     
         }
 
     }

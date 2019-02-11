@@ -8,6 +8,10 @@ public:
         value = GetNullValue();
     }
 
+    void SetNull() {
+        value = GetNullValue();
+    }
+
     Nullable<T> operator+(const Nullable<T>& other) const {
         if (!HasValue() || !other.HasValue())
             return Nullable<T>();
