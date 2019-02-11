@@ -23,7 +23,7 @@ struct SPEdgeData {
         return memAllocated == other.memAllocated;
     }
 
-    bool IsTrivial() {
+    bool IsTrivial() const {
         return memAllocated == 0 && maxMemAllocated == 0;
     }
 };
