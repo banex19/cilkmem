@@ -84,7 +84,7 @@ __attribute__((noinline)) uint64_t rec(uint64_t n) {
     return x + y;
 }
 
-uint64_t testFunction(uint64_t n) {
+__attribute__((noinline))  uint64_t testFunction(uint64_t n) {
     mem = malloc(n * 100);
 
     if (mem == nullptr)

@@ -2,6 +2,7 @@ CSICLANG?=$(LLVM_BIN)/clang
 CSICLANGPP?=$(LLVM_BIN)/clang++
 LLVMLINK?=$(LLVM_BIN)/llvm-link
 
+
 EXTRAFLAGS?=""
 CXXFLAGS?=-O3 -g -std=c++11 $(EXTRAFLAGS)
 
@@ -16,7 +17,11 @@ ifndef LLVM_BIN
 endif
 
 memoryhook.so:  MemoryHook.cpp
+ifdef BACKTRACELIB
+	$(CSICLANGPP) $(CXXFLAGS) -DUSE_BACKTRACE -I $(BACKTRACELIB) -fPIC -shared MemoryHook.cpp -o memoryhook.so 
+else
 	$(CSICLANGPP) $(CXXFLAGS) -fPIC -shared MemoryHook.cpp -o memoryhook.so 
+endif
 
 # Some checks that files exist.
 check-files:
@@ -79,7 +84,11 @@ normal: test.cpp
 
 # Link the instrumented program together.
 instr: tool.o instr.o  memoryhook.so
-	$(CSICLANGPP) $(CXXFLAGS) ./memoryhook.so instr.o tool.o  $(LLVM_BIN)/../lib/clang/6.0.0/lib/linux/libclang_rt.csi-x86_64.a -lcilkrts -lpthread -o instr
+ifdef BACKTRACELIB
+	$(CSICLANGPP) $(CXXFLAGS) ./memoryhook.so instr.o tool.o  $(LLVM_BIN)/../lib/clang/6.0.0/lib/linux/libclang_rt.csi-x86_64.a  $(BACKTRACELIB)/.libs/libbacktrace.so -lcilkrts -lpthread -o instr
+else
+	$(CSICLANGPP) $(CXXFLAGS) ./memoryhook.so instr.o tool.o  $(LLVM_BIN)/../lib/clang/6.0.0/lib/linux/libclang_rt.csi-x86_64.a  -lcilkrts -lpthread -o instr
+endif
 
 # Get the bitcode of the CSI runtime.
 csirt.bc: $(LLVM_DIR)/projects/compiler-rt/lib/csi/csirt.c

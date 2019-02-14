@@ -18,6 +18,9 @@ std::string outputFile = "";
 
 int64_t memLimit = 10000;
 size_t p = 2;
+size_t minSizeBacktrace = 10 * 1000 * 1000;
+
+std::string programName = "";
 
 
 OutputPrinter out{ std::cout };
@@ -82,6 +85,8 @@ void GetOptionsFromEnvironment() {
     SetOption(&memLimit, "MHWM_MemLimit");
     SetOption(&p, "MHWM_NumProcessors");
     SetOption(outputFile, "MHWM_OutputFile");
+    SetOption(programName, "MHWM_ProgramName");
+    SetOption(&minSizeBacktrace, "MHWM_BacktraceThreshold");
 
     if (p <= 0)
     {
@@ -279,6 +284,7 @@ extern "C" {
         if (showSource && __csi_get_detach_source_loc(detach_id)->name != nullptr)
             dag->SetLastNodeLocation((char*)__csi_get_detach_source_loc(detach_id)->name, __csi_get_detach_source_loc(detach_id)->line_number);
 
+     
         currentEdge = SPEdgeData();
 
         out << "-----------------------\n";
@@ -303,6 +309,7 @@ extern "C" {
         if (showSource &&  __csi_get_task_exit_source_loc(task_exit_id)->name != nullptr)
             dag->SetLastNodeLocation((char*)__csi_get_task_exit_source_loc(task_exit_id)->name, __csi_get_task_exit_source_loc(task_exit_id)->line_number);
 
+        
         currentEdge = SPEdgeData();
 
         out << "-----------------------\n";

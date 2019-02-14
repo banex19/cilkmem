@@ -2,7 +2,7 @@
 #include "SeriesParallelDAG.h"
 
 
-constexpr size_t DEFAULT_SLEEP_NS = 10;
+constexpr size_t DEFAULT_SLEEP_NS = 1000*1000;
 
 class SPEdgeProducer {
 public:

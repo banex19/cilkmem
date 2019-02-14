@@ -68,6 +68,7 @@ for test in TESTS:
     os.environ["MHWM_Source"] = "0"
     os.environ["MHWM_NumProcessors"] = "32"
     os.environ["MHWM_OutputDAG"] = "0"
+    
     NORMAL_PROGRAM = test.getNormal() + test.getArgs() + " > /dev/null 2>&1"
     MODIFIED_PROGRAM = test.getModified() + test.getArgs() + " > /dev/null 2>&1" 
 

@@ -551,6 +551,7 @@ void FullSPDAG::WriteDotFile(const std::string& filename) {
         file << node->id << "[label=\"" << GetDotNameForNode(node) << "\"]\n";
     }
 
+    size_t allocIndex = 0;
     for (size_t i = 0; i < edges.size(); ++i)
     {
         SPEdge* edge = edges[i];
@@ -560,7 +561,12 @@ void FullSPDAG::WriteDotFile(const std::string& filename) {
         {
 
             file << edge->from->id << " -> " << edge->to->id
-                << " [label=\"" << FormatWithCommas(edge->data.memAllocated) << " (" << FormatWithCommas(edge->data.maxMemAllocated) << ")\"";
+                << " [label=\"" << FormatWithCommas(edge->data.memAllocated) << " (" << FormatWithCommas(edge->data.maxMemAllocated) << ")";
+            
+            if (edge->data.biggestAllocation > 0)
+                file << " !" << allocIndex++;
+
+            file << "\"";
             if (edge->spawn)
             {
                 file << ", penwidth=2, color=\"red\"";
@@ -576,4 +582,23 @@ void FullSPDAG::WriteDotFile(const std::string& filename) {
     file << "}";
 
     file.close();
+
+    std::ofstream allocFile{ filename + ".txt" };
+
+    DEBUG_ASSERT(allocFile);
+
+    allocIndex = 0;
+    for (size_t i = 0; i < edges.size(); ++i)
+    {
+        SPEdge* edge = edges[i];
+
+        if (edge->forward && edge->data.biggestAllocation > 0)
+        {
+            allocFile << allocIndex << ": " << edge->data.GetSource() << "\n";
+        }
+    }
+
+
+
+    allocFile.close();
 }

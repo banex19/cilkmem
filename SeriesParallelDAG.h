@@ -23,9 +23,50 @@ struct SPEdgeData {
         return memAllocated == other.memAllocated;
     }
 
+    void FreeStrings() {
+        delete filename;
+        delete function;
+    }
+
+    void Copy(const SPEdgeData& other) {
+        FreeStrings();
+        this->memAllocated = other.memAllocated;
+        this->maxMemAllocated = other.maxMemAllocated;
+        this->biggestAllocation = other.biggestAllocation;
+
+        this->line = other.line;
+        if (other.filename)
+            this->filename = new std::string(*other.filename);
+        else this->filename = nullptr;
+        if (other.function)
+            this->function = new std::string(*other.function);
+        else this->function = nullptr;
+    }
+
+    SPEdgeData() {}
+
+    SPEdgeData(const SPEdgeData& other) {
+        Copy(other);
+    }
+
+    SPEdgeData& operator=(const SPEdgeData& other)  {
+        Copy(other);
+
+        return *this;
+    }
+
     bool IsTrivial() const {
         return memAllocated == 0 && maxMemAllocated == 0;
     }
+
+    std::string GetSource() const {
+        return *function + " (" + *filename + ":" + std::to_string(line) + ")";
+    }
+
+    size_t biggestAllocation = 0;
+    std::string* filename = nullptr;
+    std::string* function = nullptr;
+    size_t line = 0;
 };
 
 struct SPComponent {
@@ -74,7 +115,7 @@ protected:
         if (!memPool.IsInitialized())
             memPool.Initialize(sizeof(Nullable<int64_t>) * size, 5000);
 
-        auto arr =  (Nullable<int64_t>*)  memPool.Allocate();
+        auto arr = (Nullable<int64_t>*)  memPool.Allocate();
         for (size_t i = 0; i < size; ++i)
             arr[i].SetNull();
 
@@ -85,7 +126,7 @@ protected:
     static SingleThreadPool memPool;
 };
 
-struct SPNaiveComponent  : public SPArrayBasedComponent {
+struct SPNaiveComponent : public SPArrayBasedComponent {
     SPNaiveComponent(const SPNaiveComponent& other) = delete;
 
     SPNaiveComponent(size_t p) :p(p) {
@@ -121,7 +162,7 @@ struct SPNaiveComponent  : public SPArrayBasedComponent {
 
         this->p = p;
 
-       // if (!trivial)
+        // if (!trivial)
         {
             r = AllocateArray(p + 1);
 
@@ -156,7 +197,7 @@ struct SPNaiveComponent  : public SPArrayBasedComponent {
 
 };
 
-struct SPNaiveMultispawnComponent : public SPArrayBasedComponent{
+struct SPNaiveMultispawnComponent : public SPArrayBasedComponent {
     SPNaiveMultispawnComponent(const SPNaiveMultispawnComponent& other) = delete;
 
     SPNaiveMultispawnComponent(SPNaiveMultispawnComponent&& other) {
@@ -346,7 +387,7 @@ private:
     SPNode* AddNode() { SPNode* newNode = new SPNode(); newNode->id = nodes.size(); nodes.push_back(newNode); return newNode; }
 
     SPEdge* AddEdge(SPNode* from, SPNode* succ, const SPEdgeData &data, bool spawn = false) {
-        SPEdge* newEdge = (SPEdge*) memPool.Allocate();
+        SPEdge* newEdge = (SPEdge*)memPool.Allocate();
         newEdge->id = edges.size();
 
         newEdge->from = from;
@@ -382,8 +423,7 @@ private:
 
 class BareboneSPDAG : public SPDAG {
 public:
-    BareboneSPDAG(OutputPrinter& outputPrinter) : SPDAG(outputPrinter) {
-    }
+    BareboneSPDAG(OutputPrinter& outputPrinter) : SPDAG(outputPrinter) {}
 
     void Spawn(SPEdgeData &currentEdge, size_t regionId);
     void Sync(SPEdgeData &currentEdge, size_t regionId);
@@ -405,7 +445,7 @@ private:
 
     SPNaiveComponent AggregateComponentsMultispawnNaive(SPEdgeProducer* edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold, size_t p);
 
-    SPBareboneEdge* AddEdge(const SPEdgeData& data) { SPBareboneEdge* edge = (SPBareboneEdge*) memPool.Allocate(); edge->data = data; return edge; }
+    SPBareboneEdge* AddEdge(const SPEdgeData& data) { SPBareboneEdge* edge = (SPBareboneEdge*)memPool.Allocate(); edge->data = data; return edge; }
 
     std::deque<SPBareboneLevel> stack;
 
