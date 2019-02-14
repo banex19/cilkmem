@@ -20,6 +20,7 @@ struct bt_ctx {
     std::string function, filename;
     int line;
     int error;
+    size_t allocSize;
 };
 
 static void error_callback(void *data, const char *msg, int errnum) {
@@ -44,7 +45,7 @@ static int full_callback(void *data, uintptr_t pc, const char *filename, int lin
     struct bt_ctx *ctx = (bt_ctx*)data;
     if (function)
     {
-        //  printf("%lx %s %s:%d\n", (unsigned long)pc, function, filename ? filename : "??", lineno);
+        //  printf("[%zu] %lx %s %s:%d\n", ctx.allocSize, (unsigned long)pc, function, filename ? filename : "??", lineno);
     }
     else
     {
@@ -76,18 +77,18 @@ static int simple_callback(void *data, uintptr_t pc) {
 struct backtrace_state *state = nullptr;
 
 
-static inline void bt(SPEdgeData& data) {
+static inline void bt(SPEdgeData& data, size_t size) {
     reentrant = true;
-
 
     if (state == nullptr)
         state = backtrace_create_state(nullptr, 0, error_callback, nullptr);
     struct bt_ctx ctx = { state };
+    ctx.allocSize = size;
     backtrace_full(state, 0, full_callback, error_callback, &ctx);
 
     if (ctx.function != "")
     {
-        //   printf("--> %s %s:%d\n", ctx.function.c_str(), ctx.filename != "" ? ctx.filename.c_str() : "??", ctx.line);
+        //   printf("[%zu] --> %s %s:%d\n", ctx.allocSize, ctx.function.c_str(), ctx.filename != "" ? ctx.filename.c_str() : "??", ctx.line);
         if (data.filename)
             *(data.filename) = ctx.filename;
         else
@@ -157,7 +158,7 @@ extern "C" {
         {
             if (size > currentEdge.biggestAllocation)
             {
-                bt(currentEdge);
+                bt(currentEdge, size);
                 currentEdge.biggestAllocation = size;
             }
         }
@@ -306,7 +307,7 @@ extern "C" {
         {
             if (new_size > currentEdge.biggestAllocation)
             {
-                bt(currentEdge);
+                bt(currentEdge, new_size);
                 currentEdge.biggestAllocation = size;
             }
         }
