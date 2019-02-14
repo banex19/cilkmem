@@ -87,7 +87,7 @@ static inline void bt(SPEdgeData& data) {
 
     if (ctx.function != "")
     {
-     //   printf("--> %s %s:%d\n", ctx.function.c_str(), ctx.filename != "" ? ctx.filename.c_str() : "??", ctx.line);
+        //   printf("--> %s %s:%d\n", ctx.function.c_str(), ctx.filename != "" ? ctx.filename.c_str() : "??", ctx.line);
         if (data.filename)
             *(data.filename) = ctx.filename;
         else
@@ -159,8 +159,8 @@ extern "C" {
             {
                 bt(currentEdge);
                 currentEdge.biggestAllocation = size;
-    }
-}
+            }
+        }
 #endif
 
         if (started && !inInstrumentation&& isMainThread)
@@ -191,7 +191,7 @@ extern "C" {
         // printf("Allocating %p\n", mem);
 
         return mem + PAYLOAD_BYTES;
-}
+    }
 
 
     void free(void* mem) {
@@ -265,21 +265,61 @@ extern "C" {
             return malloc(new_size);
 
         uint8_t* oldptr = (uint8_t*)ptr - PAYLOAD_BYTES;
+
+        size_t size = 0;
+        int64_t diff = 0;
+
+        if (PAYLOAD_BYTES > 2 * sizeof(size_t))
+        {
+            size_t magic = 0;
+            memcpy(&magic, oldptr, sizeof(size_t));
+
+            if (magic == magicValue)
+                memcpy(&size, oldptr + sizeof(size_t), sizeof(size_t));
+
+            if (size > 0)
+                diff = new_size - size;
+
+        }
+
+
         uint8_t* mem = (uint8_t*)__libc_realloc(oldptr, new_size + PAYLOAD_BYTES);
 
-        if (oldptr != mem)
+        /* if (oldptr != mem)
+         {
+             numAllocs++;
+             if (debug &&  currentPtr < MAX_DEBUG_PTRS)
+             {
+                 if (currentPtr == 0)
+                     memset(ptrs, 0, sizeof(void*) * MAX_DEBUG_PTRS);
+
+                 ptrs[currentPtr] = mem;
+                 currentPtr++;
+             }
+             //  printf("Allocating %p\n", mem);
+         } */
+
+        bool isMainThread = mainThread == 0 || (GetThreadId() == mainThread);
+
+#ifdef USE_BACKTRACE
+        if (isMainThread && !reentrant && new_size > minSizeBacktrace)
         {
-            numAllocs++;
-            if (debug &&  currentPtr < MAX_DEBUG_PTRS)
+            if (new_size > currentEdge.biggestAllocation)
             {
-                if (currentPtr == 0)
-                    memset(ptrs, 0, sizeof(void*) * MAX_DEBUG_PTRS);
-
-                ptrs[currentPtr] = mem;
-                currentPtr++;
+                bt(currentEdge);
+                currentEdge.biggestAllocation = size;
             }
+        }
+#endif
 
-            //  printf("Allocating %p\n", mem);
+        if (started && !inInstrumentation&& isMainThread)
+        {
+            if (diff > 0)
+                currentEdge.memAllocated += diff;
+            else currentEdge.memAllocated -= diff;
+
+            if (currentEdge.memAllocated > currentEdge.maxMemAllocated)
+                currentEdge.maxMemAllocated = currentEdge.memAllocated;
         }
 
         // Store the size of the allocation.
