@@ -41,14 +41,22 @@ using NullableT = Nullable<int64_t>;
 
 /* SP component functions */
 void SPComponent::CombineSeries(const SPComponent & other) {
+    if (trivial && other.trivial)
+        return;
+
     SPComponent old = *this;
     memTotal = old.memTotal + other.memTotal;
     maxSingle = std::max(old.maxSingle, old.memTotal + other.maxSingle);
 
     multiRobust = NullMax(old.multiRobust, other.multiRobust + old.memTotal);
+
+    trivial = false;
 }
 
 void SPComponent::CombineParallel(const SPComponent & other, int64_t threshold) {
+    if (trivial && other.trivial)
+        return;
+
     SPComponent old = *this;
     memTotal = old.memTotal + other.memTotal;
     maxSingle = std::max(old.maxSingle + std::max((int64_t)0, other.memTotal), other.maxSingle + std::max((int64_t)0, old.memTotal));
@@ -60,6 +68,8 @@ void SPComponent::CombineParallel(const SPComponent & other, int64_t threshold) 
         c1MaxSingleBar + c2MaxSingleBar,
         NullMax(c1MaxSingleBar, old.multiRobust, NullableT(old.memTotal), NullableT(0)) + other.multiRobust,
         NullMax(c2MaxSingleBar, other.multiRobust, NullableT(other.memTotal), NullableT(0)) + old.multiRobust);
+
+    trivial = false;
 }
 
 int64_t SPComponent::GetWatermark(int64_t threshold) {
@@ -164,7 +174,9 @@ SPComponent SPMultispawnComponent::ToComponent() {
 
     component.memTotal = runningMemTotal;
     component.multiRobust = NullMax(multiRobustSuspendEnd, multiRobustIgnoreEnd);
-    component.maxSingle = NullMax(singleIgnoreEnd, singleSuspendEnd).GetValue(); // TODO.
+    component.maxSingle = NullMax(singleIgnoreEnd, singleSuspendEnd).GetValue(); 
+
+    component.trivial = false;
 
     return component;
 }
@@ -444,6 +456,8 @@ SPNaiveComponent SPNaiveMultispawnComponent::ToComponent() {
             break;
         }
     }
+
+    component.trivial = false;
 
     return component;
 }

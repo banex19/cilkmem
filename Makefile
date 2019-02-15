@@ -4,7 +4,13 @@ LLVMLINK?=$(LLVM_BIN)/llvm-link
 
 
 EXTRAFLAGS?=""
+ifdef BACKTRACELIB
+EXTRAFLAGS+=-DUSE_BACKTRACE
+endif
+
 CXXFLAGS?=-O3 -g -std=c++11 $(EXTRAFLAGS)
+
+
 
 all: check-vars check-files instr normal debug
 

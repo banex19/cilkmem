@@ -150,7 +150,7 @@ extern "C" {
 
                 alwaysOut << "Memory high-water mark for p = " << i << " : " << watermark << "\n";
             }
-         
+
 
             if (file)
             {
@@ -199,7 +199,7 @@ extern "C" {
     }
 
     void program_exit() {
-        out << "Exiting program\n";
+        OUTPUT(out << "Exiting program\n");
 
         // Simulate a final sync.
         dag->Sync(currentEdge, 0);
@@ -274,20 +274,22 @@ extern "C" {
 
     void  __attribute__((noinline))  __csi_detach(const csi_id_t detach_id, const int32_t* has_spawned) {
         inInstrumentation = true;
-        out << "Spawn id " << detach_id << " (spawned: " << *has_spawned << ") - Addr: " << has_spawned
-            << " - Level: " << currentLevel;
+        OUTPUT(out << "Spawn id " << detach_id << " (spawned: " << *has_spawned << ") - Addr: " << has_spawned
+            << " - Level: " << currentLevel;);
         if (__csi_get_detach_source_loc(detach_id)->name != nullptr)
-            out << " - Source: " << __csi_get_detach_source_loc(detach_id)->name << ":" << __csi_get_detach_source_loc(detach_id)->line_number;
-        out << "\n";
+        {
+            OUTPUT(out << " - Source: " << __csi_get_detach_source_loc(detach_id)->name << ":" << __csi_get_detach_source_loc(detach_id)->line_number);
+        }
+        OUTPUT(out << "\n");
 
         dag->Spawn(currentEdge, (uintptr_t)has_spawned);
         if (showSource && __csi_get_detach_source_loc(detach_id)->name != nullptr)
             dag->SetLastNodeLocation((char*)__csi_get_detach_source_loc(detach_id)->name, __csi_get_detach_source_loc(detach_id)->line_number);
 
-     
+
         currentEdge = SPEdgeData();
 
-        out << "-----------------------\n";
+        OUTPUT(out << "-----------------------\n");
 
         if (runOnline && !aggregatingThread) // Start aggregation online.
             aggregatingThread = new std::thread{ AggregateComponentsOnline };
@@ -301,18 +303,18 @@ extern "C" {
         const csi_id_t detach_id) {
         inInstrumentation = true;
 
-        out << "Task exit ";
-        out << " - Source: " << __csi_get_task_exit_source_loc(task_exit_id)->name << ":" << __csi_get_task_exit_source_loc(task_exit_id)->line_number;
-        out << "\n";
+        OUTPUT(out << "Task exit ");
+        OUTPUT(out << " - Source: " << __csi_get_task_exit_source_loc(task_exit_id)->name << ":" << __csi_get_task_exit_source_loc(task_exit_id)->line_number);
+        OUTPUT(out << "\n");
 
         dag->Sync(currentEdge, 0);
         if (showSource &&  __csi_get_task_exit_source_loc(task_exit_id)->name != nullptr)
             dag->SetLastNodeLocation((char*)__csi_get_task_exit_source_loc(task_exit_id)->name, __csi_get_task_exit_source_loc(task_exit_id)->line_number);
 
-        
+
         currentEdge = SPEdgeData();
 
-        out << "-----------------------\n";
+        OUTPUT(out << "-----------------------\n");
 
         inInstrumentation = false;
     }
@@ -326,11 +328,13 @@ extern "C" {
 
         inInstrumentation = true;
 
-        out << "Sync id " << sync_id << " (spawned: " << *has_spawned << ") - Addr: " << has_spawned
-            << " - Level: " << currentLevel;
+        OUTPUT(out << "Sync id " << sync_id << " (spawned: " << *has_spawned << ") - Addr: " << has_spawned
+            << " - Level: " << currentLevel);
         if (__csi_get_sync_source_loc(sync_id)->name != nullptr)
-            out << " - Source: " << __csi_get_sync_source_loc(sync_id)->name << ":" << __csi_get_sync_source_loc(sync_id)->line_number;
-        out << "\n";
+        {
+            OUTPUT(out << " - Source: " << __csi_get_sync_source_loc(sync_id)->name << ":" << __csi_get_sync_source_loc(sync_id)->line_number);
+        }
+        OUTPUT(out << "\n");
 
         if (*has_spawned <= 0)
             return;
@@ -341,7 +345,7 @@ extern "C" {
 
         currentEdge = SPEdgeData();
 
-        out << "-----------------------\n";
+        OUTPUT(out << "-----------------------\n");
 
         inInstrumentation = false;
     }

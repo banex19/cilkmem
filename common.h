@@ -15,6 +15,12 @@
 #define DEBUG_ASSERT_EX(x, format, ...) 
 #endif
 
+#ifndef DISABLE_OUTPUT_COMPILE
+#define OUTPUT(x) do {x;} while (0)
+#else
+#define OUTPUT(x) 
+#endif
+
 static std::locale systemLocale{ "" };
 
 template<class T>

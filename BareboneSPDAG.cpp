@@ -17,7 +17,7 @@ void BareboneSPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId) {
         stack.back().remaining = 2;
     }
 
-    out << "Spawn region: " << regionId << " - level: " << currentLevel << "\n";
+    OUTPUT(out << "Spawn region: " << regionId << " - level: " << currentLevel << "\n");
 
     edges.push_back(AddEdge(currentEdge));
     events.push_back(event);
@@ -56,7 +56,7 @@ void BareboneSPDAG::Sync(SPEdgeData & currentEdge, size_t regionId) {
         else
             current.remaining--;
 
-        out << "Sync at level " << currentLevel << "\n";
+        OUTPUT(out << "Sync at level " << currentLevel << "\n");
     }
 
     edges.push_back(AddEdge(currentEdge));
@@ -104,7 +104,7 @@ SPComponent BareboneSPDAG::AggregateComponents(SPEdgeProducer * edgeProducer, SP
 }
 
 SPComponent BareboneSPDAG::AggregateComponentsSpawn(SPEdgeProducer * edgeProducer, SPEventBareboneOnlineProducer* eventProducer, int64_t threshold) {
-    out << "Aggregating from spawn\n";
+    OUTPUT(out << "Aggregating from spawn\n");
 
     SPComponent spawnPath = AggregateUntilSync(edgeProducer, eventProducer, false, threshold);
 
@@ -116,7 +116,7 @@ SPComponent BareboneSPDAG::AggregateComponentsSpawn(SPEdgeProducer * edgeProduce
 }
 
 SPComponent BareboneSPDAG::AggregateUntilSync(SPEdgeProducer * edgeProducer, SPEventBareboneOnlineProducer * eventProducer, bool continuation, int64_t threshold) {
-    out << "Aggregating until sync (continuation: " << continuation << ") - ";
+    OUTPUT(out << "Aggregating until sync (continuation: " << continuation << ") - ");
 
     SPComponent path;
     SPEvent event = eventProducer->Next();
@@ -124,11 +124,11 @@ SPComponent BareboneSPDAG::AggregateUntilSync(SPEdgeProducer * edgeProducer, SPE
     if (!event.spawn) // Single-edge sub-component.
     {
         path = SPComponent(edgeProducer->NextData());
-        out << "Only one component\n";
+        OUTPUT(out << "Only one component\n");
         return path;
     }
 
-    out << "With subcomponents\n";
+    OUTPUT(out << "With subcomponents\n");
 
     bool delegatedContinuation = false;
     while (!delegatedContinuation && event.spawn)
@@ -155,13 +155,13 @@ SPComponent BareboneSPDAG::AggregateUntilSync(SPEdgeProducer * edgeProducer, SPE
         path.CombineSeries(SPComponent(edgeProducer->NextData()));
     }
 
-    out << "Finished aggregating (continuation: " << continuation << ")\n";
+    OUTPUT(out << "Finished aggregating (continuation: " << continuation << ")\n");
 
     return path;
 }
 
 SPNaiveComponent BareboneSPDAG::AggregateComponentsSpawnNaive(SPEdgeProducer * edgeProducer, SPEventBareboneOnlineProducer * eventProducer, int64_t threshold, size_t p) {
-    out << "Aggregating from spawn\n";
+    OUTPUT(out << "Aggregating from spawn\n");
 
     SPNaiveComponent spawnPath = AggregateUntilSyncNaive(edgeProducer, eventProducer, false, threshold, p);
 
@@ -173,7 +173,7 @@ SPNaiveComponent BareboneSPDAG::AggregateComponentsSpawnNaive(SPEdgeProducer * e
 }
 
 SPNaiveComponent BareboneSPDAG::AggregateUntilSyncNaive(SPEdgeProducer * edgeProducer, SPEventBareboneOnlineProducer * eventProducer, bool continuation, int64_t threshold, size_t p) {
-    out << "Aggregating until sync (continuation: " << continuation << ") - ";
+    OUTPUT(out << "Aggregating until sync (continuation: " << continuation << ") - ");
 
     SPNaiveComponent path{ SPEdgeData(), p };
     SPEvent event = eventProducer->Next();
@@ -181,11 +181,11 @@ SPNaiveComponent BareboneSPDAG::AggregateUntilSyncNaive(SPEdgeProducer * edgePro
     if (!event.spawn) // Single-edge sub-component.
     {
         path = SPNaiveComponent(edgeProducer->NextData(), p);
-        out << "Only one component\n";
+        OUTPUT(out << "Only one component\n");
         return path;
     }
 
-    out << "With subcomponents\n";
+    OUTPUT(out << "With subcomponents\n");
 
     bool delegatedContinuation = false;
     while (!delegatedContinuation && event.spawn)
@@ -212,7 +212,7 @@ SPNaiveComponent BareboneSPDAG::AggregateUntilSyncNaive(SPEdgeProducer * edgePro
         path.CombineSeries(SPNaiveComponent(edgeProducer->NextData(), p));
     }
 
-    out << "Finished aggregating (continuation: " << continuation << ")\n";
+    OUTPUT(out << "Finished aggregating (continuation: " << continuation << ")\n");
 
     return path;
 }
@@ -351,7 +351,7 @@ SPComponent BareboneSPDAG::AggregateComponentsMultispawn(SPEdgeProducer * edgePr
             {
                 DEBUG_ASSERT(event.newSync);
 
-                out << "Found child multispawn in spawn path of a parent multispawn\n";
+                OUTPUT(out << "Found child multispawn in spawn path of a parent multispawn\n");
                 spawn.CombineSeries(AggregateComponentsMultispawn(edgeProducer, eventProducer, threshold));
                 event = eventProducer->Next();
             }
@@ -411,7 +411,7 @@ SPNaiveComponent BareboneSPDAG::AggregateComponentsMultispawnNaive(SPEdgeProduce
             {
                 DEBUG_ASSERT(event.newSync);
 
-                out << "Found child multispawn in spawn path of a parent multispawn\n";
+                OUTPUT(out << "Found child multispawn in spawn path of a parent multispawn\n");
                 spawn.CombineSeries(AggregateComponentsMultispawnNaive(edgeProducer, eventProducer, threshold, p));
                 event = eventProducer->Next();
             }

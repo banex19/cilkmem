@@ -7,8 +7,7 @@
 void FullSPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId) {
     SPNode* spawnNode = AddNode();
 
-
-    out << "Adding spawn node (id: " << spawnNode->id << ")\n";
+    OUTPUT(out << "Adding spawn node (id: " << spawnNode->id << ")\n");
 
     if (currentStack.size() == 0 || afterSpawn)
     {
@@ -30,15 +29,14 @@ void FullSPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId) {
         { // Beginning of program.
             SPNode* startNode = AddNode();
 
-
-            out << "Adding start node (id: " << startNode->id << ")\n";
+            OUTPUT(out << "Adding start node (id: " << startNode->id << ")\n");
 
             AddEdge(startNode, spawnNode, currentEdge);
 
             firstNode = spawnNode;
         }
 
-        out << "Adding sync node (id: " << syncNode->id << ")\n";
+        OUTPUT(out << "Adding sync node (id: " << syncNode->id << ")\n");
     }
     else if (!afterSpawn)
     {
@@ -59,7 +57,7 @@ void FullSPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId) {
 
             spawnNode->associatedSyncNode = syncNode;
 
-            out << "Adding sync node (id: " << syncNode->id << ")\n";
+            OUTPUT(out << "Adding sync node (id: " << syncNode->id << ")\n");
         }
         else
         {
@@ -93,12 +91,12 @@ void FullSPDAG::Sync(SPEdgeData & currentEdge, size_t regionId) {
     if (regionId != 0)
         DEBUG_ASSERT(regionId == parentLevel->regionIds.back());
 
-    out << "DAG sync: level " << currentStack.size() - 1 << "\n";
+    OUTPUT(out << "DAG sync: level " << currentStack.size() - 1 << "\n");
 
     if (parentLevel->syncNodes.size() > 0)
     {
-        out << "Left to sync for node " << parentLevel->syncNodes.back()->id << ": " <<
-            parentLevel->syncNodes.back()->numStrandsLeft << "\n";
+        OUTPUT(out << "Left to sync for node " << parentLevel->syncNodes.back()->id << ": " <<
+            parentLevel->syncNodes.back()->numStrandsLeft << "\n");
     }
 
     SPNode* pred = lastNode;
@@ -108,11 +106,11 @@ void FullSPDAG::Sync(SPEdgeData & currentEdge, size_t regionId) {
         delete parentLevel;
         currentStack.pop_back();
 
-        out << "Finished level " << currentStack.size() << "\n";
+        OUTPUT(out << "Finished level " << currentStack.size() << "\n");
 
         if (currentStack.size() == 0) // The program is exiting.
         {
-            out << "Adding exit node\n";
+            OUTPUT(out << "Adding exit node\n");
 
             SPNode* exitNode = AddNode();
             AddEdge(pred, exitNode, currentEdge);
@@ -126,7 +124,7 @@ void FullSPDAG::Sync(SPEdgeData & currentEdge, size_t regionId) {
         DEBUG_ASSERT(parentLevel->syncNodes.size() > 0);
         DEBUG_ASSERT(parentLevel->syncNodes.back()->numStrandsLeft == 2);
 
-        out << "DAG sync (continued): level " << currentStack.size() - 1 << "\n";
+        OUTPUT(out << "DAG sync (continued): level " << currentStack.size() - 1 << "\n");
     }
 
     DEBUG_ASSERT(parentLevel->syncNodes.size() > 0);
@@ -267,7 +265,7 @@ SPComponent FullSPDAG::AggregateMultispawn(SPEdgeProducer * edgeProducer, SPEdge
     SPNode* sync = pivot->associatedSyncNode;
     DEBUG_ASSERT_EX(sync != nullptr, "[AggregateMultispawn] Node %zu has no sync node", pivot->id);
 
-    out << "Aggregating multispawn from node " << pivot->id << "\n";
+    OUTPUT(out << "Aggregating multispawn from node " << pivot->id << "\n");
 
     SPMultispawnComponent multispawn;
 
@@ -288,7 +286,7 @@ SPComponent FullSPDAG::AggregateMultispawn(SPEdgeProducer * edgeProducer, SPEdge
             {
                 DEBUG_ASSERT(next->to->associatedSyncNode != sync);
 
-                out << "Found multispawn starting from node " << next->to->id << "\n";
+                OUTPUT(out << "Found multispawn starting from node " << next->to->id << "\n");
                 spawn.CombineSeries(AggregateMultispawn(edgeProducer, next, next->to, threshold));
                 next = edgeProducer->Next();
             }
@@ -304,14 +302,14 @@ SPComponent FullSPDAG::AggregateMultispawn(SPEdgeProducer * edgeProducer, SPEdge
 
             while (next->to != sync && next->to->associatedSyncNode != sync)
             {
-                out << "Found multispawn starting from node " << next->to->id << "\n";
+                OUTPUT(out << "Found multispawn starting from node " << next->to->id << "\n");
                 continuation.CombineSeries(AggregateMultispawn(edgeProducer, next, next->to, threshold));
                 next = edgeProducer->Next();
             }
 
             if (next->to == sync) // Are we at the last continuation strand?
             {
-                out << "Edge from " << next->from->id << " to " << next->to->id << " is the last continuation\n";
+                OUTPUT(out << "Edge from " << next->from->id << " to " << next->to->id << " is the last continuation\n");
                 stop = true;
             }
 
@@ -324,7 +322,7 @@ SPComponent FullSPDAG::AggregateMultispawn(SPEdgeProducer * edgeProducer, SPEdge
 
     DEBUG_ASSERT(isSpawn);
 
-    out << "Multispawn from node " << pivot->id << ": ";
+    OUTPUT(out << "Multispawn from node " << pivot->id << ": ");
     //multispawn.ToComponent().Print();
 
 
@@ -335,7 +333,7 @@ SPNaiveComponent FullSPDAG::AggregateMultispawnNaive(SPEdgeProducer * edgeProduc
     SPNode* sync = pivot->associatedSyncNode;
     DEBUG_ASSERT_EX(sync != nullptr, "[AggregateMultispawn] Node %zu has no sync node", pivot->id);
 
-    out << "Aggregating multispawn from node " << pivot->id << "\n";
+    OUTPUT(out << "Aggregating multispawn from node " << pivot->id << "\n");
 
     SPNaiveMultispawnComponent multispawn{ p };
 
@@ -356,7 +354,7 @@ SPNaiveComponent FullSPDAG::AggregateMultispawnNaive(SPEdgeProducer * edgeProduc
             {
                 DEBUG_ASSERT(next->to->associatedSyncNode != sync);
 
-                out << "Found multispawn starting from node " << next->to->id << "\n";
+                OUTPUT(out << "Found multispawn starting from node " << next->to->id << "\n");
                 spawn.CombineSeries(AggregateMultispawnNaive(edgeProducer, next, next->to, threshold, p));
                 next = edgeProducer->Next();
             }
@@ -372,14 +370,14 @@ SPNaiveComponent FullSPDAG::AggregateMultispawnNaive(SPEdgeProducer * edgeProduc
 
             while (next->to != sync && next->to->associatedSyncNode != sync)
             {
-                out << "Found multispawn starting from node " << next->to->id << "\n";
+                OUTPUT(out << "Found multispawn starting from node " << next->to->id << "\n");
                 continuation.CombineSeries(AggregateMultispawnNaive(edgeProducer, next, next->to, threshold, p));
                 next = edgeProducer->Next();
             }
 
             if (next->to == sync) // Are we at the last continuation strand?
             {
-                out << "Edge from " << next->from->id << " to " << next->to->id << " is the last continuation\n";
+                OUTPUT(out << "Edge from " << next->from->id << " to " << next->to->id << " is the last continuation\n");
                 stop = true;
             }
 
@@ -399,19 +397,19 @@ SPComponent FullSPDAG::AggregateComponentsFromNode(SPEdgeProducer* edgeProducer,
     SPNode* sync = pivot->associatedSyncNode;
     DEBUG_ASSERT_EX(sync != nullptr, "[AggregateComponentsFromNode] Node %zu has no sync node", pivot->id);
 
-    out << "Aggregating spawn from id " << pivot->id << " to id " << sync->id << "\n";
+    OUTPUT(out << "Aggregating spawn from id " << pivot->id << " to id " << sync->id << "\n");
 
     SPEdge* next = edgeProducer->Next();
     SPComponent spawnPath = AggregateUntilSync(edgeProducer, next, sync, threshold);
 
-    out << "Finished subcomponent (spawn) from id " << pivot->id << " to id " << sync->id << "\n";
+    OUTPUT(out << "Finished subcomponent (spawn) from id " << pivot->id << " to id " << sync->id << "\n");
 
     next = edgeProducer->Next();
     SPComponent continuation = AggregateUntilSync(edgeProducer, next, sync, threshold);
 
     spawnPath.CombineParallel(continuation, threshold);
 
-    out << "Finished subcomponent (continuation) from id " << pivot->id << " to id " << sync->id << "\n";
+    OUTPUT(out << "Finished subcomponent (continuation) from id " << pivot->id << " to id " << sync->id << "\n");
 
     return spawnPath;
 }
@@ -431,7 +429,7 @@ SPComponent FullSPDAG::AggregateUntilSync(SPEdgeProducer* edgeProducer, SPEdge *
         DEBUG_ASSERT_EX(currentEdge->to->associatedSyncNode != nullptr, "[AggregateUntilSync] Node %zu has no sync node", toNode->id);
 
         // There's another spawn in this path. Resolve that sub-component first.
-        out << "Found spawn from node " << toNode->id << "\n";
+        OUTPUT(out << "Found spawn from node " << toNode->id << "\n");
         subComponent.CombineSeries(AggregateComponentsFromNode(edgeProducer, toNode, threshold));
 
         // The spawn has returned, continue from the only edge coming out of that 
@@ -448,7 +446,7 @@ SPComponent FullSPDAG::AggregateUntilSync(SPEdgeProducer* edgeProducer, SPEdge *
         }
     }
 
-    out << "Aggregated from " << startId << " to " << syncNode->id << "\n";
+    OUTPUT(out << "Aggregated from " << startId << " to " << syncNode->id << "\n");
 
     return subComponent;
 }
@@ -457,19 +455,19 @@ SPNaiveComponent FullSPDAG::AggregateComponentsFromNodeNaive(SPEdgeProducer * ed
     SPNode* sync = pivot->associatedSyncNode;
     DEBUG_ASSERT_EX(sync != nullptr, "[AggregateComponentsFromNode] Node %zu has no sync node", pivot->id);
 
-    out << "Aggregating spawn from id " << pivot->id << " to id " << sync->id << "\n";
+    OUTPUT(out << "Aggregating spawn from id " << pivot->id << " to id " << sync->id << "\n");
 
     SPEdge* next = edgeProducer->Next();
     SPNaiveComponent spawnPath = AggregateUntilSyncNaive(edgeProducer, next, sync, threshold, p);
 
-    out << "Finished subcomponent (spawn) from id " << pivot->id << " to id " << sync->id << "\n";
+    OUTPUT(out << "Finished subcomponent (spawn) from id " << pivot->id << " to id " << sync->id << "\n");
 
     next = edgeProducer->Next();
     SPNaiveComponent continuation = AggregateUntilSyncNaive(edgeProducer, next, sync, threshold, p);
 
     spawnPath.CombineParallel(continuation);
 
-    out << "Finished subcomponent (continuation) from id " << pivot->id << " to id " << sync->id << "\n";
+    OUTPUT(out << "Finished subcomponent (continuation) from id " << pivot->id << " to id " << sync->id << "\n");
 
     return spawnPath;
 }
@@ -488,7 +486,7 @@ SPNaiveComponent FullSPDAG::AggregateUntilSyncNaive(SPEdgeProducer * edgeProduce
         DEBUG_ASSERT_EX(currentEdge->to->associatedSyncNode != nullptr, "[AggregateUntilSync] Node %zu has no sync node", toNode->id);
 
         // There's another spawn in this path. Resolve that sub-component first.
-        out << "Found spawn from node " << toNode->id << "\n";
+        OUTPUT(out << "Found spawn from node " << toNode->id << "\n");
         subComponent.CombineSeries(AggregateComponentsFromNodeNaive(edgeProducer, toNode, threshold, p));
 
         // The spawn has returned, continue from the only edge coming out of that 
@@ -505,7 +503,7 @@ SPNaiveComponent FullSPDAG::AggregateUntilSyncNaive(SPEdgeProducer * edgeProduce
         }
     }
 
-    out << "Aggregated from " << startId << " to " << syncNode->id << "\n";
+    OUTPUT(out << "Aggregated from " << startId << " to " << syncNode->id << "\n");
 
     return subComponent;
 }
@@ -563,8 +561,10 @@ void FullSPDAG::WriteDotFile(const std::string& filename) {
             file << edge->from->id << " -> " << edge->to->id
                 << " [label=\"" << FormatWithCommas(edge->data.memAllocated) << " (" << FormatWithCommas(edge->data.maxMemAllocated) << ")";
             
+#ifdef USE_BACKTRACE
             if (edge->data.biggestAllocation > 0)
                 file << " !" << allocIndex++;
+#endif
 
             file << "\"";
             if (edge->spawn)
@@ -583,6 +583,7 @@ void FullSPDAG::WriteDotFile(const std::string& filename) {
 
     file.close();
 
+#ifdef USE_BACKTRACE
     std::ofstream allocFile{ filename + ".txt" };
 
     DEBUG_ASSERT(allocFile);
@@ -600,7 +601,6 @@ void FullSPDAG::WriteDotFile(const std::string& filename) {
     
     }
 
-
-
     allocFile.close();
+#endif
 }

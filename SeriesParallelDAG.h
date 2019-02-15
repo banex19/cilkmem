@@ -23,17 +23,13 @@ struct SPEdgeData {
         return memAllocated == other.memAllocated;
     }
 
-    void FreeStrings() {
-        delete filename;
-        delete function;
-        filename = nullptr;
-        function = nullptr;
-    }
-
     void Copy(const SPEdgeData& other) {
-        FreeStrings();
+       
         this->memAllocated = other.memAllocated;
         this->maxMemAllocated = other.maxMemAllocated;
+
+#ifdef USE_BACKTRACE
+        FreeStrings();
         this->biggestAllocation = other.biggestAllocation;
 
         this->line = other.line;
@@ -43,6 +39,7 @@ struct SPEdgeData {
         if (other.function)
             this->function = new std::string(*other.function);
         else this->function = nullptr;
+#endif
     }
 
     SPEdgeData() {}
@@ -61,14 +58,24 @@ struct SPEdgeData {
         return memAllocated == 0 && maxMemAllocated == 0;
     }
 
+#ifdef USE_BACKTRACE
+    void FreeStrings() {
+        delete filename;
+        delete function;
+        filename = nullptr;
+        function = nullptr;
+    }
+
     std::string GetSource() const {
         return *function + " (" + *filename + ":" + std::to_string(line) + ")";
     }
+
 
     size_t biggestAllocation = 0;
     std::string* filename = nullptr;
     std::string* function = nullptr;
     size_t line = 0;
+#endif
 };
 
 struct SPComponent {
@@ -81,6 +88,7 @@ struct SPComponent {
     SPComponent(const SPEdgeData& edge) {
         memTotal = edge.memAllocated;
         maxSingle = edge.maxMemAllocated;
+        trivial = edge.IsTrivial();
     }
 
     void CombineSeries(const SPComponent& other);
@@ -90,6 +98,8 @@ struct SPComponent {
     int64_t GetWatermark(int64_t threshold);
 
     void Print();
+
+    bool trivial = false;
 };
 
 struct SPMultispawnComponent {
@@ -399,7 +409,7 @@ private:
         newEdge->spawn = spawn;
         from->successors.push_back(newEdge);
 
-        out << "Adding edge " << from->id << " --> " << succ->id << "\n";
+        OUTPUT(out << "Adding edge " << from->id << " --> " << succ->id << "\n");
 
         edges.push_back(newEdge);
         return newEdge;
