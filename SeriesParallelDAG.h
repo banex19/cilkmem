@@ -26,6 +26,8 @@ struct SPEdgeData {
     void FreeStrings() {
         delete filename;
         delete function;
+        filename = nullptr;
+        function = nullptr;
     }
 
     void Copy(const SPEdgeData& other) {

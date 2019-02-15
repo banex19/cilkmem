@@ -595,7 +595,9 @@ void FullSPDAG::WriteDotFile(const std::string& filename) {
         if (edge->forward && edge->data.biggestAllocation > 0)
         {
             allocFile << allocIndex << " (" << edge->data.biggestAllocation << "): " << edge->data.GetSource() << "\n";
+            allocIndex++;
         }
+    
     }
 
 

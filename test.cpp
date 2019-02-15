@@ -84,6 +84,23 @@ __attribute__((noinline)) uint64_t rec(uint64_t n) {
     return x + y;
 }
 
+__attribute__((noinline))  uint64_t testInterleave(uint64_t n) {
+
+    mem = malloc(10000);
+
+    free(mem);
+
+    mem = malloc(10000);
+
+    free(mem);
+
+    mem = malloc(50000);
+
+    free(mem);
+
+    return 0;
+}
+
 __attribute__((noinline))  uint64_t testFunction(uint64_t n) {
     mem = malloc(n * 100);
 
@@ -124,7 +141,7 @@ int main(int argc, char** argv) {
       //    cilk_spawn test(100);
      //  uint64_t x = cilk_spawn test(10);
 
-    mem = malloc(200);
+    mem = aligned_alloc(64,200);
     // uint64_t x = cilk_spawn fib(2);
    //  uint64_t y =  testSpawn(100);
 

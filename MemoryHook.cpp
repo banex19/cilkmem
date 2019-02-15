@@ -3,6 +3,7 @@
 #include <iostream>
 #include <cstring>
 #include "hooks.h"
+#include <malloc.h>
 
 
 bool reentrant = false;
@@ -143,14 +144,17 @@ extern "C" {
     static size_t magicValue = 0xAABBCCDDEEFFAABB;
 
     void* malloc(size_t size) {
-
         // numAllocs++;
 
-        uint8_t* mem = (uint8_t*)__libc_malloc(PAYLOAD_BYTES + size);
-
         if (size == 0) // Treat zero-allocations as non-zero for sake of testing.
-            size = 1;
+            size = 1; 
 
+#ifdef USE_PAYLOAD
+        uint8_t* mem = (uint8_t*)__libc_malloc(PAYLOAD_BYTES + size);
+#else
+        uint8_t* mem = (uint8_t*)__libc_malloc(size);
+        size = malloc_usable_size(mem);
+#endif
         bool isMainThread = mainThread == 0 || (GetThreadId() == mainThread);
 
 #ifdef USE_BACKTRACE
@@ -165,7 +169,6 @@ extern "C" {
 #endif
 
         if (started && !inInstrumentation&& isMainThread)
-
         {
             currentEdge.memAllocated += size;
 
@@ -173,25 +176,17 @@ extern "C" {
                 currentEdge.maxMemAllocated = currentEdge.memAllocated;
         }
 
+#ifdef USE_PAYLOAD
         // Store the size of the allocation.
         if (PAYLOAD_BYTES > 2 * sizeof(size_t))
         {
             memcpy(mem, &magicValue, sizeof(size_t));
             memcpy(mem + sizeof(size_t), &size, sizeof(size_t));
         }
-
-        if (debug && currentPtr < MAX_DEBUG_PTRS)
-        {
-            if (currentPtr == 0)
-                memset(ptrs, 0, sizeof(void*) * MAX_DEBUG_PTRS);
-
-            ptrs[currentPtr] = mem;
-            currentPtr++;
-        }
-
-        // printf("Allocating %p\n", mem);
-
         return mem + PAYLOAD_BYTES;
+#else
+        return mem;
+#endif
     }
 
 
@@ -199,36 +194,9 @@ extern "C" {
         if (mem == nullptr)
             return;
 
-
-
-        // DEBUG_ASSERT(numAllocs > numFrees);
-
+#ifdef USE_PAYLOAD
         uint8_t* addr = (uint8_t*)mem - PAYLOAD_BYTES;
-
-
-
-        if (debug)
-        {
-            bool found = false;
-            for (size_t i = 0; i < currentPtr; ++i)
-            {
-                if (ptrs[i] == addr)
-                {
-                    //ptrs[i] = nullptr;
-                    found = true;
-                    break;
-                }
-
-            }
-            if (currentPtr < MAX_DEBUG_PTRS)
-            {
-                // DEBUG_ASSERT_EX(found, "Didn't find %p - Allocs: %zu, frees: %zu", mem, numAllocs, numFrees);
-            }
-
-        }
-
         size_t size = 0;
-
         if (PAYLOAD_BYTES > 2 * sizeof(size_t))
         {
             size_t magic = 0;
@@ -236,8 +204,11 @@ extern "C" {
 
             if (magic == magicValue)
                 memcpy(&size, addr + sizeof(size_t), sizeof(size_t));
-
         }
+#else
+        uint8_t* addr = (uint8_t*)mem;
+        size_t size = malloc_usable_size(mem);
+#endif
 
         if (started && !inInstrumentation
             && (mainThread == 0 || GetThreadId() == mainThread)
@@ -265,6 +236,7 @@ extern "C" {
         if (ptr == nullptr)
             return malloc(new_size);
 
+#ifdef USE_PAYLOAD
         uint8_t* oldptr = (uint8_t*)ptr - PAYLOAD_BYTES;
 
         size_t size = 0;
@@ -279,26 +251,17 @@ extern "C" {
                 memcpy(&size, oldptr + sizeof(size_t), sizeof(size_t));
 
             if (size > 0)
-                diff = new_size - size;
+                diff = (int64_t) new_size - (int64_t) size;
 
         }
 
 
         uint8_t* mem = (uint8_t*)__libc_realloc(oldptr, new_size + PAYLOAD_BYTES);
-
-        /* if (oldptr != mem)
-         {
-             numAllocs++;
-             if (debug &&  currentPtr < MAX_DEBUG_PTRS)
-             {
-                 if (currentPtr == 0)
-                     memset(ptrs, 0, sizeof(void*) * MAX_DEBUG_PTRS);
-
-                 ptrs[currentPtr] = mem;
-                 currentPtr++;
-             }
-             //  printf("Allocating %p\n", mem);
-         } */
+#else
+        size_t oldSize = malloc_usable_size(ptr);
+        uint8_t* mem = (uint8_t*)__libc_realloc(ptr, new_size);
+        int64_t diff = (int64_t)malloc_usable_size(mem) - (int64_t)oldSize;
+        #endif
 
         bool isMainThread = mainThread == 0 || (GetThreadId() == mainThread);
 
@@ -308,7 +271,7 @@ extern "C" {
             if (new_size > currentEdge.biggestAllocation)
             {
                 bt(currentEdge, new_size);
-                currentEdge.biggestAllocation = size;
+                currentEdge.biggestAllocation = new_size;
             }
         }
 #endif
@@ -324,6 +287,7 @@ extern "C" {
         }
 
         // Store the size of the allocation.
+#ifdef USE_PAYLOAD
         if (PAYLOAD_BYTES > 2 * sizeof(size_t))
         {
             memcpy(mem, &magicValue, sizeof(size_t));
@@ -332,11 +296,18 @@ extern "C" {
 
 
         return mem + PAYLOAD_BYTES;
+#else
+        return mem;
+#endif
     }
 
-    void* memalign(size_t alignment, size_t size, const void *caller) {
+    void* memalign(size_t alignment, size_t size /*, const void *caller */) {
         DEBUG_ASSERT(alignment <= PAYLOAD_BYTES);
+#ifdef USE_PAYLOAD
         return malloc(size);
+#else 
+        return malloc(PAYLOAD_BYTES + size);
+#endif
         //  return __libc_memalign(alignment, size, caller);
 
        //  return mem + sizeof(size_t);
