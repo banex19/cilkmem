@@ -116,6 +116,20 @@ __attribute__((noinline))  uint64_t testFunction(uint64_t n) {
     return 0;
 }
 
+__attribute__((noinline)) uint64_t stress(uint64_t n)     {
+    if (n == 0)
+    {
+        mem = malloc(1);
+        free(mem);
+        return 1;
+    }
+
+    cilk_spawn stress(n - 1);
+    auto x = stress(n - 1);
+
+    return x;
+}
+
 
 int main(int argc, char** argv) {
     uint64_t n = 10;
@@ -152,11 +166,15 @@ int main(int argc, char** argv) {
 
     for (size_t j = 0; j < o; ++j)
     {
-#pragma cilk grainsize 1
-        cilk_for(size_t i = 0; i < k; ++i) {
-            uint64_t x = testFunction(n);
-
+        for (size_t i = 0; i < k; ++i)
+        {
+             stress(n);
         }
+//#pragma cilk grainsize 1
+     //   cilk_for(size_t i = 0; i < k; ++i) {
+     //       uint64_t x = testFunction(n); }
+
+        
     }
 
     //  cilk_sync;

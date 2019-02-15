@@ -24,7 +24,7 @@ endif
 
 memoryhook.so:  MemoryHook.cpp
 ifdef BACKTRACELIB
-	$(CSICLANGPP) $(CXXFLAGS) -DUSE_BACKTRACE -I $(BACKTRACELIB) -fPIC -shared MemoryHook.cpp -o memoryhook.so 
+	$(CSICLANGPP) $(CXXFLAGS) -I $(BACKTRACELIB) -fPIC -shared MemoryHook.cpp -o memoryhook.so 
 else
 	$(CSICLANGPP) $(CXXFLAGS) -fPIC -shared MemoryHook.cpp -o memoryhook.so 
 endif

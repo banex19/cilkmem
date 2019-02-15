@@ -88,6 +88,9 @@ void SPComponent::Print() {
 
 /* Multispawn component functions */
 void SPMultispawnComponent::IncrementOnContinuation(const SPComponent & continuation, int64_t threshold) {
+    if (continuation.trivial)
+        return;
+
     SPMultispawnComponent old = *this; // Make a copy of the current state.
 
     multiRobustSuspendEnd = old.multiRobustSuspendEnd + continuation.memTotal;
@@ -117,6 +120,9 @@ void SPMultispawnComponent::IncrementOnContinuation(const SPComponent & continua
 }
 
 void SPMultispawnComponent::IncrementOnSpawn(const SPComponent & spawn, int64_t threshold) {
+    if (spawn.trivial)
+        return;
+
     SPMultispawnComponent old = *this; // Make a copy of the current state.
 
     singleSuspendEnd = NullMax(old.singleSuspendEnd + spawn.memTotal, NullableT(spawn.maxSingle + old.emptyTail));
@@ -174,7 +180,7 @@ SPComponent SPMultispawnComponent::ToComponent() {
 
     component.memTotal = runningMemTotal;
     component.multiRobust = NullMax(multiRobustSuspendEnd, multiRobustIgnoreEnd);
-    component.maxSingle = NullMax(singleIgnoreEnd, singleSuspendEnd).GetValue(); 
+    component.maxSingle = NullMax(singleIgnoreEnd, singleSuspendEnd).GetValue();
 
     component.trivial = false;
 
@@ -270,8 +276,8 @@ void SPNaiveComponent::CombineParallel(const SPNaiveComponent& other) {
 }
 
 void SPNaiveComponent::CombineSeries(const SPNaiveComponent & other) {
-     if (trivial && other.trivial)
-         return;
+    if (trivial && other.trivial)
+        return;
 
     NullableT* temp = AllocateArray(p + 1);
     memcpy(temp, r, sizeof(NullableT) * (p + 1));
@@ -348,6 +354,9 @@ int64_t SPNaiveComponent::GetWatermark(size_t watermarkP) {
 
 
 void SPNaiveMultispawnComponent::IncrementOnContinuation(const SPNaiveComponent& continuation) {
+    if (continuation.trivial)
+        return;
+
 
     for (size_t i = 0; i <= maxPos; ++i)
     {
@@ -390,6 +399,9 @@ void SPNaiveMultispawnComponent::IncrementOnContinuation(const SPNaiveComponent&
 }
 
 void SPNaiveMultispawnComponent::IncrementOnSpawn(const SPNaiveComponent & spawn) {
+    if (spawn.trivial)
+        return;
+
     NullableT* oldPartial = AllocateArray(p + 1);
     memcpy(oldPartial, partial, sizeof(NullableT) * (p + 1));
 
