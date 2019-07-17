@@ -42,7 +42,7 @@ __attribute__((noinline)) int testSpawn(int x) {
 
 
 
-__attribute__((noinline)) uint64_t fib(uint64_t n) {
+__attribute__((noinline)) uint64_t fibAlloc(uint64_t n) {
     // std::cout << "fib(" << n << ")\n";
     if (n < 2)
     {
@@ -50,13 +50,25 @@ __attribute__((noinline)) uint64_t fib(uint64_t n) {
     }
 
     size_t x, y;
-    x = cilk_spawn fib(n - 1);
+    x = cilk_spawn fibAlloc(n - 1);
     // test((int)n);
     mem = malloc(n);
-    y = fib(n - 2);
+    y = fibAlloc(n - 2);
     cilk_sync;
 
     mem = malloc(100);
+
+    return x + y;
+}
+
+__attribute__((noinline)) uint64_t fib(uint64_t n) {
+    if (n < 2)
+        return n;
+
+    size_t x, y;
+    x = cilk_spawn fib(n - 1);
+    y = fib(n - 2);
+    cilk_sync;
 
     return x + y;
 }
@@ -116,25 +128,36 @@ __attribute__((noinline))  uint64_t testFunction(uint64_t n) {
     return 0;
 }
 
-__attribute__((noinline)) uint64_t stress(uint64_t n)     {
+__attribute__((noinline)) uint64_t stress(uint64_t n) {
     if (n == 0)
     {
-        mem = malloc(1);
+        mem = malloc(50);
         free(mem);
         return 1;
     }
+    void* nowmem = nullptr;
+
+        nowmem = malloc(n * 100);
+
+
+    mem = nowmem;
+
 
     cilk_spawn stress(n - 1);
     auto x = stress(n - 1);
 
+    free(nowmem);
+
     return x;
 }
 
+uint64_t x = 0;
 
 int main(int argc, char** argv) {
     uint64_t n = 10;
     uint64_t k = 5;
     uint64_t o = 1;
+
     if (argc > 1)
     {
         n = std::atoi(argv[1]);
@@ -155,7 +178,7 @@ int main(int argc, char** argv) {
       //    cilk_spawn test(100);
      //  uint64_t x = cilk_spawn test(10);
 
-    mem = aligned_alloc(64,200);
+   // mem = aligned_alloc(64,200);
     // uint64_t x = cilk_spawn fib(2);
    //  uint64_t y =  testSpawn(100);
 
@@ -168,35 +191,37 @@ int main(int argc, char** argv) {
     {
         for (size_t i = 0; i < k; ++i)
         {
-             stress(n);
-        }
-//#pragma cilk grainsize 1
-     //   cilk_for(size_t i = 0; i < k; ++i) {
-     //       uint64_t x = testFunction(n); }
+            x = cilk_spawn stress(n);
+          //  x = fib(n);
+              
+	}
+        //#pragma cilk grainsize 1
+             //   cilk_for(size_t i = 0; i < k; ++i) {
+             //        x = testFunction(n); }
 
-        
+
     }
 
-    //  cilk_sync;
-  /*
-      for (size_t i = 0; i < k; ++i)
-      {
-          uint64_t x = cilk_spawn testFunction(n);
+    cilk_sync;
+    /*
+        for (size_t i = 0; i < k; ++i)
+        {
+            uint64_t x = cilk_spawn testFunction(n);
 
-      }
+        }
 
-      cilk_sync;
-  */
-  // mem = malloc(123);
+        cilk_sync;
+    */
+    // mem = malloc(123);
 
-   //  cilk_sync;
+     //  cilk_sync;
 
-   //  uint64_t x = cilk_spawn fib(3);
+     //  uint64_t x = cilk_spawn fib(3);
 
- //  mem = malloc(500);
+   //  mem = malloc(500);
 
 
-   //  printf("Returned %lu and %lu\n", x, y);
+     //  printf("Returned %lu and %lu\n", x, y);
 
 
     return 0;

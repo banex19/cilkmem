@@ -78,6 +78,7 @@ void FullSPDAG::Spawn(SPEdgeData & currentEdge, size_t regionId) {
 }
 
 void FullSPDAG::Sync(SPEdgeData & currentEdge, size_t regionId) {
+
     if (nodes.size() == 0)
     {
         isComplete = true;
@@ -562,8 +563,8 @@ void FullSPDAG::WriteDotFile(const std::string& filename) {
                 << " [label=\"" << FormatWithCommas(edge->data.memAllocated) << " (" << FormatWithCommas(edge->data.maxMemAllocated) << ")";
             
 #ifdef USE_BACKTRACE
-            if (edge->data.biggestAllocation > 0)
-                file << " !" << allocIndex++;
+          /*  if (edge->data.biggestAllocation > 0)
+                file << " !" << allocIndex++; */
 #endif
 
             file << "\"";
@@ -584,7 +585,7 @@ void FullSPDAG::WriteDotFile(const std::string& filename) {
     file.close();
 
 #ifdef USE_BACKTRACE
-    std::ofstream allocFile{ filename + ".txt" };
+   /* std::ofstream allocFile{ filename + ".txt" };
 
     DEBUG_ASSERT(allocFile);
 
@@ -601,6 +602,6 @@ void FullSPDAG::WriteDotFile(const std::string& filename) {
     
     }
 
-    allocFile.close();
+    allocFile.close(); */
 #endif
 }

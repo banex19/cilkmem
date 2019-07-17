@@ -1,14 +1,15 @@
 CSICLANG?=$(LLVM_BIN)/clang
 CSICLANGPP?=$(LLVM_BIN)/clang++
 LLVMLINK?=$(LLVM_BIN)/llvm-link
-
+CLANGVER?=7.0.0
 
 EXTRAFLAGS?=""
 ifdef BACKTRACELIB
-EXTRAFLAGS+=-DUSE_BACKTRACE
+EXTRAFLAGS+= -DUSE_BACKTRACE
 endif
 
 CXXFLAGS?=-O3 -g -std=c++11 $(EXTRAFLAGS)
+BCFLAGS?=$(CXXFLAGS)
 
 
 
@@ -22,7 +23,7 @@ ifndef LLVM_BIN
   $(error LLVM_BIN is undefined - please define LLVM_BIN as the directory containing the binaries of LLVM, e.g. /whatever/llvm/build/bin)
 endif
 
-memoryhook.so:  MemoryHook.cpp
+memoryhook.so: MemoryHook.cpp
 ifdef BACKTRACELIB
 	$(CSICLANGPP) $(CXXFLAGS) -I $(BACKTRACELIB) -fPIC -shared MemoryHook.cpp -o memoryhook.so 
 else
@@ -32,23 +33,27 @@ endif
 # Some checks that files exist.
 check-files:
 	@test -s $(LLVM_DIR)/projects/compiler-rt/lib/csi/csirt.c || { echo "LLVM does not contain CSI in projects/compiler-rt! Exiting."; exit 1; }
-	@test -s $(LLVM_BIN)/../lib/clang/6.0.0/lib/linux/libclang_rt.csi-x86_64.a || { echo "LLVM does not contain the CSI runtime in the lib folder! Exiting."; exit 1; }
+	@test -s $(LLVM_BIN)/../lib/clang/$(CLANGVER)/lib/linux/libclang_rt.csi-x86_64.a || { echo "LLVM does not contain the CSI runtime in the lib folder! Exiting."; exit 1; }
+
+
+toolheaders: OutputPrinter.h MemPoolVector.h SeriesParallelDAG.h hooks.h common.h SPEdgeProducer.h Nullable.h SingleThreadPool.h
+	touch toolheaders
 
 # These targets build the tool (first compiling to IR, and then to object files).
 tool1.bc: hooks.cpp toolheaders
-	$(CSICLANGPP) -O3 -S -emit-llvm hooks.cpp -o tool1.bc
+	$(CSICLANGPP) $(BCFLAGS) -O3 -S -emit-llvm hooks.cpp -o tool1.bc
 
 tool2.bc: hooks2.cpp toolheaders 
-	$(CSICLANGPP) -O3 -S -emit-llvm hooks2.cpp -o tool2.bc
+	$(CSICLANGPP) $(BCFLAGS) -O3 -S -emit-llvm hooks2.cpp -o tool2.bc
 
 tool3.bc: FullSPDAG.cpp toolheaders
-	$(CSICLANGPP) -O3 -S -emit-llvm FullSPDAG.cpp -o tool3.bc
+	$(CSICLANGPP) $(BCFLAGS) -O3 -S -emit-llvm FullSPDAG.cpp -o tool3.bc
 
 tool4.bc: SPComponent.cpp toolheaders
-	$(CSICLANGPP) -O3 -S -emit-llvm SPComponent.cpp -o tool4.bc
+	$(CSICLANGPP) $(BCFLAGS) -O3 -S -emit-llvm SPComponent.cpp -o tool4.bc
 
 tool5.bc: BareboneSPDAG.cpp toolheaders
-	$(CSICLANGPP) -O3 -S -emit-llvm BareboneSPDAG.cpp -o tool5.bc
+	$(CSICLANGPP) $(BCFLAGS) -O3 -S -emit-llvm BareboneSPDAG.cpp -o tool5.bc
 
 tool.bc: tool1.bc tool2.bc tool3.bc tool4.bc tool5.bc
 	$(LLVMLINK) tool1.bc tool2.bc tool3.bc tool4.bc tool5.bc -o tool.bc
@@ -71,9 +76,6 @@ hooks5.o: BareboneSPDAG.cpp toolheaders
 tool.o: hooks1.o hooks2.o hooks3.o hooks4.o hooks5.o 
 	ld -r hooks1.o hooks2.o hooks3.o hooks4.o hooks5.o -o tool.o
 
-toolheaders: OutputPrinter.h MemPoolVector.h SeriesParallelDAG.h hooks.h common.h SPEdgeProducer.h Nullable.h SingleThreadPool.h
-	touch toolheaders
-
 # This is where the Cilk program is instrumented. This uses compile-time instrumentation, so it needs the tool's bitcode.
 instr.o: tool.bc test.cpp csirt.bc config.txt
 	$(CSICLANGPP) -fcilkplus $(CXXFLAGS) -c -fcsi=aftertapirloops test.cpp -mllvm -csi-config-mode -mllvm "whitelist" -mllvm -csi-config-filename -mllvm "config.txt" -mllvm -csi-tool-bitcode -mllvm "tool.bc" -mllvm -csi-runtime-bitcode -mllvm "csirt.bc" -mllvm -csi-instrument-basic-blocks=false -mllvm -csi-instrument-memory-accesses=false -mllvm -csi-instrument-atomics=false -mllvm -csi-instrument-memintrinsics=false -mllvm -csi-instrument-allocfn=false -mllvm -csi-instrument-alloca=false -o instr.o 
@@ -91,9 +93,9 @@ normal: test.cpp
 # Link the instrumented program together.
 instr: tool.o instr.o  memoryhook.so
 ifdef BACKTRACELIB
-	$(CSICLANGPP) $(CXXFLAGS) ./memoryhook.so instr.o tool.o  $(LLVM_BIN)/../lib/clang/6.0.0/lib/linux/libclang_rt.csi-x86_64.a  $(BACKTRACELIB)/.libs/libbacktrace.so -lcilkrts -lpthread -o instr
+	$(CSICLANGPP) $(CXXFLAGS) ./memoryhook.so instr.o tool.o  $(LLVM_BIN)/../lib/clang/$(CLANGVER)/lib/linux/libclang_rt.csi-x86_64.a  $(BACKTRACELIB)/.libs/libbacktrace.so -lcilkrts -lpthread -o instr
 else
-	$(CSICLANGPP) $(CXXFLAGS) ./memoryhook.so instr.o tool.o  $(LLVM_BIN)/../lib/clang/6.0.0/lib/linux/libclang_rt.csi-x86_64.a  -lcilkrts -lpthread -o instr
+	$(CSICLANGPP) $(CXXFLAGS) ./memoryhook.so instr.o tool.o  $(LLVM_BIN)/../lib/clang/$(CLANGVER)/lib/linux/libclang_rt.csi-x86_64.a  -lcilkrts -lpthread -o instr
 endif
 
 # Get the bitcode of the CSI runtime.

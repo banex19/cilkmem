@@ -42,11 +42,11 @@ void SetOption(T* option, const char* envVarName) {
 
     T val = std::atoll(string);
     if (val != 0)
-        *option = val;
+        * option = val;
 }
 
-void SetOption(std::string& option, const char* envVarName) {
-    char * string = getenv(envVarName);
+void SetOption(std::string & option, const char* envVarName) {
+    char* string = getenv(envVarName);
 
     if (string == nullptr)
         return;
@@ -62,9 +62,9 @@ void SetOption(bool* option, const char* envVarName, const char* trueString, con
 
 
     if (strcmp(string, trueString) == 0)
-        *option = true;
+        * option = true;
     else if (strcmp(string, falseString) == 0)
-        *option = false;
+        * option = false;
 }
 
 void GetOptionsFromEnvironment() {
@@ -149,7 +149,18 @@ extern "C" {
                 }
 
                 alwaysOut << "Memory high-water mark for p = " << i << " : " << watermark << "\n";
+
+#ifdef USE_BACKTRACE
+                if (aggregated.rSourceMaps[i].size() > 0) {
+                    alwaysOut << "Source map for p = " << i << ":\n";
+                    for (auto& keyVal : aggregated.rSourceMaps[i]) {
+                        alwaysOut << "[" << keyVal.first << "]: " << keyVal.second << "\n";
+                    }
+                }
+#endif
             }
+
+
 
 
             if (file)
@@ -308,7 +319,7 @@ extern "C" {
         OUTPUT(out << "\n");
 
         dag->Sync(currentEdge, 0);
-        if (showSource &&  __csi_get_task_exit_source_loc(task_exit_id)->name != nullptr)
+        if (showSource && __csi_get_task_exit_source_loc(task_exit_id)->name != nullptr)
             dag->SetLastNodeLocation((char*)__csi_get_task_exit_source_loc(task_exit_id)->name, __csi_get_task_exit_source_loc(task_exit_id)->line_number);
 
 
@@ -322,9 +333,9 @@ extern "C" {
     void __csi_detach_continue(const csi_id_t detach_continue_id,
         const csi_id_t detach_id) {}
 
-    void __csi_before_sync(const csi_id_t sync_id, const int32_t* has_spawned) {}
+    void __csi_before_sync(const csi_id_t sync_id, const int32_t * has_spawned) {}
 
-    void  __attribute__((noinline))  __csi_after_sync(const csi_id_t sync_id, const int32_t* has_spawned) {
+    void  __attribute__((noinline))  __csi_after_sync(const csi_id_t sync_id, const int32_t * has_spawned) {
 
         inInstrumentation = true;
 

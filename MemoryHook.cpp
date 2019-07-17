@@ -17,20 +17,20 @@ extern std::string programName;
 
 
 struct bt_ctx {
-    struct backtrace_state *state;
+    struct backtrace_state* state;
     std::string function, filename;
     int line;
     int error;
     size_t allocSize;
 };
 
-static void error_callback(void *data, const char *msg, int errnum) {
-    struct bt_ctx *ctx = (bt_ctx*)data;
+static void error_callback(void* data, const char* msg, int errnum) {
+    struct bt_ctx* ctx = (bt_ctx*)data;
     fprintf(stderr, "ERROR: %s (%d)", msg, errnum);
     ctx->error = 1;
 }
 
-static void syminfo_callback(void *data, uintptr_t pc, const char *symname, uintptr_t symval, uintptr_t symsize) {
+static void syminfo_callback(void* data, uintptr_t pc, const char* symname, uintptr_t symval, uintptr_t symsize) {
     //struct bt_ctx *ctx = data;
     if (symname)
     {
@@ -42,11 +42,11 @@ static void syminfo_callback(void *data, uintptr_t pc, const char *symname, uint
     }
 }
 
-static int full_callback(void *data, uintptr_t pc, const char *filename, int lineno, const char *function) {
-    struct bt_ctx *ctx = (bt_ctx*)data;
+static int full_callback(void* data, uintptr_t pc, const char* filename, int lineno, const char* function) {
+    struct bt_ctx* ctx = (bt_ctx*)data;
     if (function)
     {
-        //  printf("[%zu] %lx %s %s:%d\n", ctx.allocSize, (unsigned long)pc, function, filename ? filename : "??", lineno);
+        //    printf("[%zu] %lx %s %s:%d\n", ctx->allocSize, (unsigned long)pc, function, filename ? filename : "??", lineno);
     }
     else
     {
@@ -54,8 +54,9 @@ static int full_callback(void *data, uintptr_t pc, const char *filename, int lin
     }
 
 
-    if (filename != nullptr && ((programName.size() > 0 && strstr(filename, programName.c_str()) != NULL) || strstr(filename, "./") != NULL) && strstr(filename, "MemoryHook") == NULL)
+    if (true && filename != nullptr && ((programName.size() > 0 && strstr(filename, programName.c_str()) != NULL) || strstr(filename, "./") != NULL) && strstr(filename, "MemoryHook") == NULL)
     {
+        //  printf("HERE\n");
         if (function != nullptr)
             ctx->function = function;
         ctx->filename = filename;
@@ -67,19 +68,19 @@ static int full_callback(void *data, uintptr_t pc, const char *filename, int lin
     return 0;
 }
 
-static int simple_callback(void *data, uintptr_t pc) {
+static int simple_callback(void* data, uintptr_t pc) {
 
-    struct bt_ctx *ctx = (bt_ctx*)data;
+    struct bt_ctx* ctx = (bt_ctx*)data;
     backtrace_pcinfo(ctx->state, pc, full_callback, error_callback, data);
 
     return 0;
 }
 
-struct backtrace_state *state = nullptr;
+struct backtrace_state* state = nullptr;
 
+std::unordered_map<void*, std::string> addrToSource;
 
-static inline void bt(SPEdgeData& data, size_t size) {
-    reentrant = true;
+static inline void bt_inner(SPEdgeData & data, size_t size, bool newMax = false, void* addr = nullptr) {
 
     if (state == nullptr)
         state = backtrace_create_state(nullptr, 0, error_callback, nullptr);
@@ -89,27 +90,46 @@ static inline void bt(SPEdgeData& data, size_t size) {
 
     if (ctx.function != "")
     {
-        //   printf("[%zu] --> %s %s:%d\n", ctx.allocSize, ctx.function.c_str(), ctx.filename != "" ? ctx.filename.c_str() : "??", ctx.line);
-        if (data.filename)
-            *(data.filename) = ctx.filename;
-        else
-            data.filename = new std::string(ctx.filename);
-        if (data.function)
-            *(data.function) = ctx.function;
-        else
-            data.function = new std::string(ctx.function);
-        data.line = (size_t)ctx.line;
+        // printf("[%zu] --> %s %s:%d\n", ctx.allocSize, ctx.function.c_str(), ctx.filename != "" ? ctx.filename.c_str() : "??", ctx.line);
+        std::string sourceLoc = std::string(ctx.filename) + ":" + std::to_string(ctx.line);
+        DEBUG_ASSERT(data.allocMap);
+        DEBUG_ASSERT(data.maxAllocMap);
+        (*(data.allocMap))[sourceLoc] += size;
+        if (newMax) {
+            *(data.maxAllocMap) = *(data.allocMap);
+            data.maxAllocMapSize = data.maxMemAllocated;
+        }
+
+        addrToSource[addr] = sourceLoc;
+
+        /* if (data.filename)
+             *(data.filename) = ctx.filename;
+         else
+             data.filename = new std::string(ctx.filename);
+         if (data.function)
+             *(data.function) = ctx.function;
+         else
+             data.function = new std::string(ctx.function);
+         data.line = (size_t)ctx.line; */
     }
+
+}
+
+static inline void bt(SPEdgeData & data, size_t size, bool newMax = false, void* addr = nullptr) {
+    reentrant = true;
+
+    bt_inner(data, size, newMax, addr);
 
     reentrant = false;
 }
+
 #endif
 
 extern "C" {
-    extern void *__libc_malloc(size_t);
-    extern void *__libc_free(void*);
-    extern void *__libc_realloc(void*, size_t);
-    extern void *__libc_memalign(size_t alignment, size_t size, const void *caller);
+    extern void* __libc_malloc(size_t);
+    extern void* __libc_free(void*);
+    extern void* __libc_realloc(void*, size_t);
+    extern void* __libc_memalign(size_t alignment, size_t size, const void* caller);
 }
 
 #define MAX_DEBUG_PTRS 5000
@@ -126,6 +146,8 @@ uint32_t GetThreadId() {
 
     return uid;
 }
+
+
 
 extern "C" {
     extern bool started;
@@ -144,37 +166,56 @@ extern "C" {
     static size_t magicValue = 0xAABBCCDDEEFFAABB;
 
     void* malloc(size_t size) {
+
         // numAllocs++;
 
         if (size == 0) // Treat zero-allocations as non-zero for sake of testing.
-            size = 1; 
+            size = 1;
 
 #ifdef USE_PAYLOAD
-        uint8_t* mem = (uint8_t*)__libc_malloc(PAYLOAD_BYTES + size);
+        uint8_t * mem = (uint8_t*)__libc_malloc(PAYLOAD_BYTES + size);
 #else
-        uint8_t* mem = (uint8_t*)__libc_malloc(size);
+        uint8_t * mem = (uint8_t*)__libc_malloc(size);
         size = malloc_usable_size(mem);
 #endif
         bool isMainThread = mainThread == 0 || (GetThreadId() == mainThread);
 
-#ifdef USE_BACKTRACE
-        if (isMainThread && !reentrant && size > minSizeBacktrace)
-        {
-            if (size > currentEdge.biggestAllocation)
-            {
-                bt(currentEdge, size);
-                currentEdge.biggestAllocation = size;
-            }
-        }
-#endif
+        bool newMax = false;
 
-        if (started && !inInstrumentation&& isMainThread)
+        if (!reentrant && started && !inInstrumentation && isMainThread)
         {
             currentEdge.memAllocated += size;
 
             if (currentEdge.memAllocated > currentEdge.maxMemAllocated)
+            {
+
+#ifdef USE_BACKTRACE
+                if (currentEdge.memAllocated > 2 * currentEdge.maxAllocMapSize)
+                    newMax = true;
+#endif
+
                 currentEdge.maxMemAllocated = currentEdge.memAllocated;
+            }
+
+
+            // printf("currentEdge.memAllocated: %d\n", (int)(currentEdge.memAllocated));
+
+#ifdef USE_BACKTRACE
+            if (!reentrant && size > minSizeBacktrace)
+            {
+                //  if (size > currentEdge.biggestAllocation)
+                {
+                    bt(currentEdge, size, newMax, mem);
+                    currentEdge.biggestAllocation = size;
+                }
+            }
+#endif
         }
+
+
+
+
+
 
 #ifdef USE_PAYLOAD
         // Store the size of the allocation.
@@ -194,8 +235,10 @@ extern "C" {
         if (mem == nullptr)
             return;
 
+        void* originalAddr = mem;
+
 #ifdef USE_PAYLOAD
-        uint8_t* addr = (uint8_t*)mem - PAYLOAD_BYTES;
+        uint8_t * addr = (uint8_t*)mem - PAYLOAD_BYTES;
         size_t size = 0;
         if (PAYLOAD_BYTES > 2 * sizeof(size_t))
         {
@@ -210,16 +253,25 @@ extern "C" {
         size_t size = malloc_usable_size(mem);
 #endif
 
-        if (started && !inInstrumentation
+
+        if (!reentrant && started && !inInstrumentation
             && (mainThread == 0 || GetThreadId() == mainThread)
             )
         {
+#ifdef USE_BACKTRACE
+            DEBUG_ASSERT_EXIT(currentEdge.allocMap);
+            auto& map = *currentEdge.allocMap;
+            if (addrToSource.find(originalAddr) != addrToSource.end())
+                map[addrToSource[originalAddr]] -= size;
+#endif
+
             currentEdge.memAllocated -= size;
+
         }
 
         numFrees++;
 
-        // printf("Freeing %p\n", addr);
+
 
         if (size > 0 && started)
             __libc_free((void*)addr);
@@ -227,17 +279,17 @@ extern "C" {
 
     void* calloc(size_t num, size_t size) {
         void* mem = malloc(num * size);
-        memset(mem, 0, num*size);
+        memset(mem, 0, num * size);
         return mem;
     }
 
-    void *realloc(void *ptr, size_t new_size) {
+    void* realloc(void* ptr, size_t new_size) {
 
         if (ptr == nullptr)
             return malloc(new_size);
 
 #ifdef USE_PAYLOAD
-        uint8_t* oldptr = (uint8_t*)ptr - PAYLOAD_BYTES;
+        uint8_t * oldptr = (uint8_t*)ptr - PAYLOAD_BYTES;
 
         size_t size = 0;
         int64_t diff = 0;
@@ -251,7 +303,7 @@ extern "C" {
                 memcpy(&size, oldptr + sizeof(size_t), sizeof(size_t));
 
             if (size > 0)
-                diff = (int64_t) new_size - (int64_t) size;
+                diff = (int64_t)new_size - (int64_t)size;
 
         }
 
@@ -259,32 +311,45 @@ extern "C" {
         uint8_t* mem = (uint8_t*)__libc_realloc(oldptr, new_size + PAYLOAD_BYTES);
 #else
         size_t oldSize = malloc_usable_size(ptr);
-        uint8_t* mem = (uint8_t*)__libc_realloc(ptr, new_size);
+        uint8_t * mem = (uint8_t*)__libc_realloc(ptr, new_size);
         int64_t diff = (int64_t)malloc_usable_size(mem) - (int64_t)oldSize;
-        #endif
+#endif
 
         bool isMainThread = mainThread == 0 || (GetThreadId() == mainThread);
 
-#ifdef USE_BACKTRACE
-        if (isMainThread && !reentrant && new_size > minSizeBacktrace)
-        {
-            if (new_size > currentEdge.biggestAllocation)
-            {
-                bt(currentEdge, new_size);
-                currentEdge.biggestAllocation = new_size;
-            }
-        }
-#endif
+        bool newMax = false;
 
-        if (started && !inInstrumentation&& isMainThread)
+        if (!reentrant && started && !inInstrumentation && isMainThread)
         {
             if (diff > 0)
                 currentEdge.memAllocated += diff;
             else currentEdge.memAllocated -= diff;
 
-            if (currentEdge.memAllocated > currentEdge.maxMemAllocated)
+            if (currentEdge.memAllocated > currentEdge.maxMemAllocated) {
+#ifdef USE_BACKTRACE
+                if (currentEdge.memAllocated > 2 * currentEdge.maxAllocMapSize)
+                    newMax = true;
+#endif
+
                 currentEdge.maxMemAllocated = currentEdge.memAllocated;
+            }
+
+#ifdef USE_BACKTRACE
+            if (!reentrant && new_size > minSizeBacktrace)
+            {
+                //   if (new_size > currentEdge.biggestAllocation)
+                {
+                    bt(currentEdge, size, newMax, mem);
+                    currentEdge.biggestAllocation = size;
+                }
+
+            }
+#endif
         }
+
+
+
+
 
         // Store the size of the allocation.
 #ifdef USE_PAYLOAD

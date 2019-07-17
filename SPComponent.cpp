@@ -9,7 +9,7 @@ Nullable<T> operator+(T a, const Nullable<T>& b) {
 }
 
 template <typename T>
-std::ostream & operator<<(std::ostream & os, const Nullable<T>  & obj) {
+std::ostream& operator<<(std::ostream& os, const Nullable<T>& obj) {
     if (obj.HasValue())
         os << obj.GetValue();
     else
@@ -18,12 +18,12 @@ std::ostream & operator<<(std::ostream & os, const Nullable<T>  & obj) {
 }
 
 template <typename T>
-Nullable<T> NullMin(const Nullable<T>& a, const Nullable<T> &b) {
+Nullable<T> NullMin(const Nullable<T>& a, const Nullable<T>& b) {
     return a.Min(b);
 }
 
 template <typename T>
-Nullable<T> NullMax(const Nullable<T>& a, const Nullable<T> &b) {
+Nullable<T> NullMax(const Nullable<T>& a, const Nullable<T>& b) {
     return a.Max(b);
 }
 
@@ -33,9 +33,40 @@ Nullable<T> NullMax(const Nullable<T>& a, const  Nullable<T>& b, const Nullable<
 }
 
 template <typename T>
-Nullable<T> NullMax(const Nullable<T>& a, const Nullable<T> &b, const Nullable<T>& c, const Nullable<T> &d) {
+Nullable<T> NullMax(const Nullable<T>& a, const Nullable<T>& b, const Nullable<T>& c, const Nullable<T>& d) {
     return NullMax(a, b, c).Max(d);
 }
+
+void SourceMapPurge(SourceMap& target) {
+    auto iter = target.begin();
+    for (; iter != target.end(); ) {
+        if (iter->second == 0) {
+            iter = target.erase(iter);
+        }
+        else {
+            ++iter;
+        }
+    }
+}
+
+SourceMap SourceMapCombine(SourceMap& target, const SourceMap& other) {
+    SourceMap result = target;
+    for (auto& keyVal : other) {
+        result[keyVal.first] += keyVal.second;
+        // int64_t val = keyVal.second;
+        //auto it = result.find(keyVal.first);
+        //if (it != result.end())
+        //    it->second = it->second + val;
+        //else result.insert(std::make_pair(keyVal.first, val));
+    }
+
+    DEBUG_ASSERT(result.size() >= target.size());
+
+    SourceMapPurge(result);
+    return result;
+}
+
+
 
 using NullableT = Nullable<int64_t>;
 
@@ -197,12 +228,19 @@ void SPMultispawnComponent::Print() {
 
 // SPNaiveComponent::SPNaiveComponent(const SPEdgeData& edge, size_t p)
 
-void SPNaiveComponent::CombineParallel(const SPNaiveComponent& other) {
+void SPNaiveComponent::CombineParallel(const SPNaiveComponent & other) {
     if (trivial && other.trivial)
         return;
 
     NullableT* temp = AllocateArray(p + 1);
     memcpy(temp, r, sizeof(NullableT) * (p + 1));
+
+#ifdef USE_BACKTRACE
+    SourceMap * tempMaps = new SourceMap[p + 1];
+    for (size_t i = 0; i < p + 1; ++i) {
+        tempMaps[i] = rSourceMaps[i];
+    }
+#endif
 
     for (size_t i = 0; i <= maxPos; ++i)
     {
@@ -216,13 +254,22 @@ void SPNaiveComponent::CombineParallel(const SPNaiveComponent& other) {
     int64_t oldMemTotal = memTotal;
 
     memTotal = memTotal + other.memTotal;
-
     r[0] = std::max((int64_t)0, memTotal);
+
+#ifdef USE_BACKTRACE
+    memTotalSourceMap = SourceMapCombine(memTotalSourceMap, other.memTotalSourceMap);
+
+
+    if (r[0].GetValue() != 0)
+        rSourceMaps[0] = memTotalSourceMap;
+    else rSourceMaps[0] = SourceMap();
+#endif
 
     for (size_t i = 1; i < p + 1; ++i)
     {
-        NullableT sum;
+        NullableT max;
         bool anyNonNull = false;
+        size_t bestJ = 0;
 
         size_t j = std::max((int64_t)0, (int64_t)i - (int64_t)other.maxPos);
         size_t jMax = std::min(i, maxPos);
@@ -233,15 +280,30 @@ void SPNaiveComponent::CombineParallel(const SPNaiveComponent& other) {
             if (term.HasValue())
             {
                 anyNonNull = true;
-                sum = NullMax(sum, term);
+
+                if (!max.HasValue() || max.GetValue() < NullMax(max, term).GetValue()) {
+                    bestJ = j;
+                }
+
+                max = NullMax(max, term);
             }
         }
 
 
         if (anyNonNull)
-            r[i] = sum;
+        {
+            r[i] = max;
+#ifdef USE_BACKTRACE
+            rSourceMaps[i] = SourceMapCombine(tempMaps[bestJ], other.rSourceMaps[i - bestJ]);
+#endif
+        }
         else
+        {
             r[i] = NullableT();
+#ifdef USE_BACKTRACE
+            rSourceMaps[i] = SourceMap();
+#endif
+        }
     }
 
     /*  std::cout << "Combining parallel - G_1 (" << oldMemTotal << ") - maxPos: " << maxPos << ":\n";
@@ -271,6 +333,10 @@ void SPNaiveComponent::CombineParallel(const SPNaiveComponent& other) {
     maxPos = std::min(p, maxPos + other.maxPos);
 
     FreeArray(temp);
+
+#ifdef USE_BACKTRACE
+    delete[] tempMaps;
+#endif
 
     trivial = false;
 }
@@ -313,14 +379,31 @@ void SPNaiveComponent::CombineSeries(const SPNaiveComponent & other) {
     }
 
     memTotal = oldMemTotal + other.memTotal;
-
     r[0] = std::max((int64_t)0, memTotal);
+    
+    
+#ifdef USE_BACKTRACE
+    SourceMap oldMemTotalSourceMap = memTotalSourceMap;
+    memTotalSourceMap = SourceMapCombine(memTotalSourceMap, other.memTotalSourceMap);
+ 
+    if (r[0].GetValue() != 0)
+        rSourceMaps[0] = memTotalSourceMap;
+    else rSourceMaps[0] = SourceMap();
+#endif
 
     for (size_t i = 1; i < p + 1; ++i)
     {
         NullableT term = NullMax(temp[i], other.r[i] + oldMemTotal);
+
         r[i] = term;
+
+#ifdef USE_BACKTRACE
+        if (term != temp[i])
+            rSourceMaps[i] = SourceMapCombine(other.rSourceMaps[i], oldMemTotalSourceMap);
+#endif
+
     }
+
 
     maxPos = std::max(maxPos, other.maxPos);
 
@@ -353,7 +436,7 @@ int64_t SPNaiveComponent::GetWatermark(size_t watermarkP) {
 }
 
 
-void SPNaiveMultispawnComponent::IncrementOnContinuation(const SPNaiveComponent& continuation) {
+void SPNaiveMultispawnComponent::IncrementOnContinuation(const SPNaiveComponent & continuation) {
     if (continuation.trivial)
         return;
 

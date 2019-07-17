@@ -25,6 +25,10 @@ public:
         return value == other.value;
     }
 
+    bool operator!=(const Nullable<T>& other) {
+        return !(operator==(other));
+    }
+
     bool operator<=(const  Nullable<T>&  other) {
         if (!HasValue())
             return true;

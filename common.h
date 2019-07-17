@@ -8,7 +8,8 @@
 #include <locale>
 
 #ifndef NDEBUG
-#define DEBUG_ASSERT(x) do { assert(x); } while(0)
+#define DEBUG_ASSERT_EXIT(x) do { if (!(x)) {printf("Assertion failed\n"); exit(-1); }} while(0)
+#define DEBUG_ASSERT(x) do { if (!(x)) {assert(x); exit(-1); }} while(0)
 #define DEBUG_ASSERT_EX(x, format, ...) do { if (!(x)) { printf(format, __VA_ARGS__); printf("\n"); assert(x); exit(-1); }} while (0)
 #else
 #define DEBUG_ASSERT(x) 
@@ -21,10 +22,11 @@
 #define OUTPUT(x) 
 #endif
 
-static std::locale systemLocale{ "" };
+
 
 template<class T>
 std::string FormatWithCommas(T value) {
+    std::locale systemLocale{ "" };
     std::stringstream ss;
     ss.imbue(systemLocale);
     ss << std::fixed << value;
