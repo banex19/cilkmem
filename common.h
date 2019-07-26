@@ -16,6 +16,8 @@
 #define DEBUG_ASSERT_EX(x, format, ...) 
 #endif
 
+#define GUARD_REENTRANT(stmt) do { if (!reentrant) { reentrant = true; stmt; reentrant = false; } } while (0)
+
 #ifndef DISABLE_OUTPUT_COMPILE
 #define OUTPUT(x) do {x;} while (0)
 #else

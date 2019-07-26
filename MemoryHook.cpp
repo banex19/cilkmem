@@ -198,7 +198,7 @@ extern "C" {
             }
 
 
-            // printf("currentEdge.memAllocated: %d\n", (int)(currentEdge.memAllocated));
+            // GUARD_REENTRANT(printf("currentEdge.memAllocated: %d\n", (int)(currentEdge.memAllocated)));
 
 #ifdef USE_BACKTRACE
             if (!reentrant && size > minSizeBacktrace)
