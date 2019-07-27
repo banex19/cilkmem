@@ -54,7 +54,7 @@ static int full_callback(void* data, uintptr_t pc, const char* filename, int lin
     }
 
 
-    if (true && filename != nullptr && ((programName.size() > 0 && strstr(filename, programName.c_str()) != NULL) || strstr(filename, "./") != NULL) && strstr(filename, "MemoryHook") == NULL)
+    if (true && filename != nullptr && ((programName.size() > 0 && strstr(filename, programName.c_str()) != NULL) || strstr(filename, "./") == filename) && strstr(filename, "MemoryHook") == NULL)
     {
         //  printf("HERE\n");
         if (function != nullptr)
@@ -90,11 +90,12 @@ static inline void bt_inner(SPEdgeData & data, size_t size, bool newMax = false,
 
     if (ctx.function != "")
     {
-        // printf("[%zu] --> %s %s:%d\n", ctx.allocSize, ctx.function.c_str(), ctx.filename != "" ? ctx.filename.c_str() : "??", ctx.line);
+        //printf("[%zu] --> %s %s:%d\n", ctx.allocSize, ctx.function.c_str(), ctx.filename != "" ? ctx.filename.c_str() : "??", ctx.line);
         std::string sourceLoc = std::string(ctx.filename) + ":" + std::to_string(ctx.line);
         DEBUG_ASSERT(data.allocMap);
         DEBUG_ASSERT(data.maxAllocMap);
         (*(data.allocMap))[sourceLoc] += size;
+        //std::cout << "Current memory for " << sourceLoc << ": " << (*(data.allocMap))[sourceLoc] << "\n";
         if (newMax) {
             *(data.maxAllocMap) = *(data.allocMap);
             data.maxAllocMapSize = data.maxMemAllocated;
@@ -185,6 +186,7 @@ extern "C" {
         if (!reentrant && started && !inInstrumentation && isMainThread)
         {
             currentEdge.memAllocated += size;
+          //  GUARD_REENTRANT(printf("[malloc] addr: %p - size: %d - currentEdge.memAllocated: %d - currentEdge.maxMemAllocated: %d\n", mem, (int)size, (int)(currentEdge.memAllocated), (int)(currentEdge.maxMemAllocated)));
 
             if (currentEdge.memAllocated > currentEdge.maxMemAllocated)
             {
@@ -207,6 +209,7 @@ extern "C" {
                 {
                     bt(currentEdge, size, newMax, mem);
                     currentEdge.biggestAllocation = size;
+
                 }
             }
 #endif
@@ -258,11 +261,21 @@ extern "C" {
             && (mainThread == 0 || GetThreadId() == mainThread)
             )
         {
+
+            //GUARD_REENTRANT(printf("[free] addr: %p - size: %d - currentEdge.memAllocated: %d - currentEdge.maxMemAllocated: %d\n", addr, (int)size, (int)(currentEdge.memAllocated), (int)(currentEdge.maxMemAllocated)));
+
+
 #ifdef USE_BACKTRACE
             DEBUG_ASSERT_EXIT(currentEdge.allocMap);
             auto& map = *currentEdge.allocMap;
-            if (addrToSource.find(originalAddr) != addrToSource.end())
-                map[addrToSource[originalAddr]] -= size;
+
+            if (addrToSource.find(addr) != addrToSource.end()) {
+               // GUARD_REENTRANT(printf("addrToSource hit\n"));
+                map[addrToSource[addr]] -= size;
+        }
+            else {
+             //   GUARD_REENTRANT(printf("addrToSource MISS\n"));
+            }
 #endif
 
             currentEdge.memAllocated -= size;

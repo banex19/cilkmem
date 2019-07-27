@@ -191,10 +191,11 @@ int main(int argc, char** argv) {
     {
         for (size_t i = 0; i < k; ++i)
         {
-            x = cilk_spawn stress(n);
+          //  x = cilk_spawn stress(n);
           //  x = fib(n);
-              
-	}
+	      //x = fibAlloc(n);
+	      x = stress(n);	
+}
         //#pragma cilk grainsize 1
              //   cilk_for(size_t i = 0; i < k; ++i) {
              //        x = testFunction(n); }

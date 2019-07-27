@@ -14,7 +14,7 @@ struct SPNode;
 class SPEdgeProducer;
 class SPEventBareboneOnlineProducer;
 
-using SourceMap =     std::map<std::string, int64_t>;
+using SourceMap = std::map<std::string, int64_t>;
 
 void SourceMapPurge(SourceMap& target);
 SourceMap SourceMapCombine(SourceMap& target, const SourceMap& other);
