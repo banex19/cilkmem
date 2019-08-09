@@ -153,6 +153,7 @@ __attribute__((noinline)) uint64_t stress(uint64_t n) {
 
 uint64_t x = 0;
 
+
 int main(int argc, char** argv) {
     uint64_t n = 10;
     uint64_t k = 5;
@@ -193,8 +194,8 @@ int main(int argc, char** argv) {
         {
           //  x = cilk_spawn stress(n);
           //  x = fib(n);
-	      //x = fibAlloc(n);
-	      x = stress(n);	
+         //x = fibAlloc(n);
+          x = stress(n);	
 }
         //#pragma cilk grainsize 1
              //   cilk_for(size_t i = 0; i < k; ++i) {

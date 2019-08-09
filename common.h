@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <sstream>
 #include <locale>
+#include <set>
 
 #ifndef NDEBUG
 #define DEBUG_ASSERT_EXIT(x) do { if (!(x)) {printf("Assertion failed\n"); exit(-1); }} while(0)

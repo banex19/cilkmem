@@ -260,6 +260,7 @@ struct SPNaiveComponent : public SPArrayBasedComponent {
     void CombineSeries(const SPNaiveComponent & other);
 
     int64_t GetWatermark(size_t watermarkP);
+    
 
     size_t maxPos = 0;
     size_t p = 0;
@@ -271,6 +272,8 @@ struct SPNaiveComponent : public SPArrayBasedComponent {
     SourceMap memTotalSourceMap;
 
     SourceMap* rSourceMaps = nullptr;
+
+    SourceMap& GetSourceMap(size_t watermarkP);
 #endif
 
 

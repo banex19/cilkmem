@@ -101,8 +101,7 @@ static inline void bt_inner(SPEdgeData & data, size_t size, bool newMax = false,
             data.maxAllocMapSize = data.maxMemAllocated;
         }
 
-        addrToSource[addr] = sourceLoc;
-
+        addrToSource[addr] = sourceLoc; 
         /* if (data.filename)
              *(data.filename) = ctx.filename;
          else
@@ -117,11 +116,14 @@ static inline void bt_inner(SPEdgeData & data, size_t size, bool newMax = false,
 }
 
 static inline void bt(SPEdgeData & data, size_t size, bool newMax = false, void* addr = nullptr) {
+    bool wasAlreadyReentrant = reentrant;
+
     reentrant = true;
 
     bt_inner(data, size, newMax, addr);
 
-    reentrant = false;
+    if (!wasAlreadyReentrant)
+        reentrant = false;
 }
 
 #endif
@@ -186,7 +188,7 @@ extern "C" {
         if (!reentrant && started && !inInstrumentation && isMainThread)
         {
             currentEdge.memAllocated += size;
-          //  GUARD_REENTRANT(printf("[malloc] addr: %p - size: %d - currentEdge.memAllocated: %d - currentEdge.maxMemAllocated: %d\n", mem, (int)size, (int)(currentEdge.memAllocated), (int)(currentEdge.maxMemAllocated)));
+            //  GUARD_REENTRANT(printf("[malloc] addr: %p - size: %d - currentEdge.memAllocated: %d - currentEdge.maxMemAllocated: %d\n", mem, (int)size, (int)(currentEdge.memAllocated), (int)(currentEdge.maxMemAllocated)));
 
             if (currentEdge.memAllocated > currentEdge.maxMemAllocated)
             {
@@ -270,11 +272,11 @@ extern "C" {
             auto& map = *currentEdge.allocMap;
 
             if (addrToSource.find(addr) != addrToSource.end()) {
-               // GUARD_REENTRANT(printf("addrToSource hit\n"));
-                map[addrToSource[addr]] -= size;
-        }
+                // GUARD_REENTRANT(printf("addrToSource hit\n"));
+                GUARD_REENTRANT(map[addrToSource[addr]] -= size);
+            }
             else {
-             //   GUARD_REENTRANT(printf("addrToSource MISS\n"));
+                //   GUARD_REENTRANT(printf("addrToSource MISS\n"));
             }
 #endif
 

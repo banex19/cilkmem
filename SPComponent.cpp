@@ -380,12 +380,11 @@ void SPNaiveComponent::CombineSeries(const SPNaiveComponent & other) {
 
     memTotal = oldMemTotal + other.memTotal;
     r[0] = std::max((int64_t)0, memTotal);
-    
-    
+
 #ifdef USE_BACKTRACE
     SourceMap oldMemTotalSourceMap = memTotalSourceMap;
     memTotalSourceMap = SourceMapCombine(memTotalSourceMap, other.memTotalSourceMap);
- 
+
     if (r[0].GetValue() != 0)
         rSourceMaps[0] = memTotalSourceMap;
     else rSourceMaps[0] = SourceMap();
@@ -435,6 +434,24 @@ int64_t SPNaiveComponent::GetWatermark(size_t watermarkP) {
     return watermark.GetValue();
 }
 
+#ifdef USE_BACKTRACE
+SourceMap& SPNaiveComponent::GetSourceMap(size_t watermarkP) {
+    DEBUG_ASSERT_EX(watermarkP <= p, "Requested watermark for p = %zu but the algorithm ran on p = %zu", watermarkP, p);
+
+    NullableT watermark = r[0];
+    size_t maxIndex = 0;
+
+    for (size_t i = 1; i < watermarkP + 1; ++i)
+    {
+        watermark = NullMax(watermark, r[i]);
+        if (watermark == r[i]) {
+            maxIndex = i;
+        }
+    }
+
+    return rSourceMaps[maxIndex];
+}
+#endif
 
 void SPNaiveMultispawnComponent::IncrementOnContinuation(const SPNaiveComponent & continuation) {
     if (continuation.trivial)

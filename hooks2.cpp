@@ -13,6 +13,7 @@ bool runNaive = true;
 bool debugVerbose = false;
 bool showSource = true;
 bool outputDAG = true;
+bool orderSourceMap = false;
 
 std::string outputFile = "";
 
@@ -43,6 +44,17 @@ void SetOption(T* option, const char* envVarName) {
     T val = std::atoll(string);
     if (val != 0)
         * option = val;
+}
+
+template <typename T>
+void SetOptionZeroAllowed(T * option, const char* envVarName) {
+    char* string = getenv(envVarName);
+
+    if (string == nullptr)
+        return;
+
+    T val = std::atoll(string);
+    *option = val;
 }
 
 void SetOption(std::string & option, const char* envVarName) {
@@ -84,9 +96,11 @@ void GetOptionsFromEnvironment() {
     SetOption(&outputDAG, "MHWM_OutputDAG", "1", "0");
     SetOption(&memLimit, "MHWM_MemLimit");
     SetOption(&p, "MHWM_NumProcessors");
+    SetOption(&orderSourceMap, "MHWM_OrderSourceMap", "1", "0");
     SetOption(outputFile, "MHWM_OutputFile");
     SetOption(programName, "MHWM_ProgramName");
-    SetOption(&minSizeBacktrace, "MHWM_BacktraceThreshold");
+
+    SetOptionZeroAllowed(&minSizeBacktrace, "MHWM_BacktraceThreshold");
 
     if (p <= 0)
     {
@@ -151,12 +165,28 @@ extern "C" {
                 alwaysOut << "Memory high-water mark for p = " << i << " : " << watermark << "\n";
 
 #ifdef USE_BACKTRACE
-                if (aggregated.rSourceMaps[i].size() > 0) {
-                    alwaysOut << "Source map for p = " << i << ":\n";
-                    for (auto& keyVal : aggregated.rSourceMaps[i]) {
+
+                alwaysOut << "Source map for p = " << i << ":\n";
+                if (!orderSourceMap) {
+                    for (const auto& keyVal : aggregated.GetSourceMap(i)) {
                         alwaysOut << "[" << keyVal.first << "]: " << keyVal.second << "\n";
                     }
                 }
+                else {
+                    SourceMap& map = aggregated.GetSourceMap(i);
+                    auto cmp = [](const SourceMap::value_type & p1, const SourceMap::value_type & p2)
+                    {
+                        return p2.second < p1.second;
+                    };
+
+                    std::set < SourceMap::value_type, decltype(cmp)> orderedSet(map.begin(), map.end(), cmp);
+                    for (const auto& keyVal : orderedSet)
+                    {
+                        alwaysOut << "[" << keyVal.first << "]: " << keyVal.second << "\n";
+                    }
+
+                }
+
 #endif
             }
 
